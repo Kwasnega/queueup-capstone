@@ -106,6 +106,50 @@ function createAuthRouter(pool) {
     }
   });
 
+  router.post('/admin/login', async (request, response) => {
+    const { email, password } = request.body;
+
+    if (!email || !password) {
+      return response.status(400).json({
+        message: 'email and password are required'
+      });
+    }
+
+    try {
+      const result = await pool.query(
+        'SELECT id, uid, full_name, email, role, department, password_hash FROM admins WHERE email = $1',
+        [email]
+      );
+      const admin = result.rows[0];
+
+      if (!admin || !(await bcrypt.compare(password, admin.password_hash))) {
+        return response.status(401).json({ message: 'Invalid admin email or password' });
+      }
+
+      if (!process.env.JWT_SECRET) {
+        console.error('Admin login failed: JWT_SECRET is not configured');
+        return response.status(500).json({ message: 'Authentication is not configured' });
+      }
+
+      const token = jwt.sign(
+        {
+          uid: admin.uid,
+          email: admin.email,
+          role: admin.role,
+          department: admin.department
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      const { password_hash: _passwordHash, ...profile } = admin;
+      return response.status(200).json({ token, admin: profile });
+    } catch (error) {
+      console.error('Admin login failed:', error.message);
+      return response.status(500).json({ message: 'Unable to log in as admin' });
+    }
+  });
+
   return router;
 }
 
