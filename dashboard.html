@@ -1171,19 +1171,26 @@
         }
 
         try {
-          const newRFlat = push(ref(db, `results_issues`));
-          const resultsRefStudent = ref(db, `results_issues/${payload.student_id}/${newRFlat.key}`);
-          const resultData = { ...payload, id: newRFlat.key };
-
-          // Only save to flat structure for admin access and student-specific for student tracking
-          await set(newRFlat, resultData);
-          await set(resultsRefStudent, resultData);
-
-          await push(ref(db, `notifications/${currentUID}`), {
-            message: 'Results issue submitted',
-            created_at: new Date().toISOString(),
-            is_read: false
+          const response = await fetch(`${API_BASE_URL}/api/results-issues`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${localStorage.getItem('authToken')}`
+            },
+            body: JSON.stringify({
+              faculty: payload.faculty,
+              department: payload.department,
+              programme: payload.programme,
+              session: payload.session,
+              course_code: payload.course_code,
+              course_title: payload.course_title,
+              lecturer_name: payload.lecturer_name,
+              description: payload.description,
+              comment: payload.comment
+            })
           });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.message || 'Unable to submit results issue.');
 
           showToast('Results issue submitted.', 'success');
           refreshResultsListIfOpen();
@@ -1261,36 +1268,23 @@
         }
 
         try {
-          const complaintData = {
-            student_id: studentIdValue,
-            user_uid: currentUID,
-            subject: subjectValue,
-            type: typeValue,
-            recipient: recipientValue,
-            recipient_email: recipientEmail,
-            text: messageValue,
-            status: 'Queued',
-            date_submitted: new Date().toISOString(),
-            department: profile?.department || 'N/A',
-            programme: profile?.programme || 'N/A',
-            level: profile?.level || 'N/A',
-            session: profile?.session || 'N/A',
-            faculty: profile?.faculty || 'N/A',
-            admin_route: adminRoute
-          };
-
-          const newComplaintRef = push(ref(db, `complaints`));
-          const newComplaintStudentRef = ref(db, `complaints/${studentIdValue}/${newComplaintRef.key}`);
-          const complaintDataWithId = { ...complaintData, id: newComplaintRef.key };
-          
-          await set(newComplaintRef, complaintDataWithId);
-          await set(newComplaintStudentRef, complaintDataWithId);
-
-          await push(ref(db, `notifications/${currentUID}`), {
-            message: 'Complaint submitted',
-            created_at: new Date().toISOString(),
-            is_read: false
+          const response = await fetch(`${API_BASE_URL}/api/complaints`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${localStorage.getItem('authToken')}`
+            },
+            body: JSON.stringify({
+              subject: subjectValue,
+              type: typeValue,
+              recipient: recipientValue,
+              recipient_email: recipientEmail,
+              admin_route: adminRoute,
+              text: messageValue
+            })
           });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.message || 'Unable to submit complaint.');
 
           showToast('Complaint submitted successfully.', 'success');
           setTimeout(closeModal, 700);
