@@ -163,7 +163,11 @@ function createResultsIssuesRouter(pool) {
     try {
       await client.query('BEGIN');
       const current = await client.query(
-        'SELECT * FROM results_issues WHERE id = $1 FOR UPDATE',
+        `SELECT results_issues.*, students.uid AS student_uid
+         FROM results_issues
+         JOIN students ON students.student_id = results_issues.student_id
+         WHERE results_issues.id = $1
+         FOR UPDATE OF results_issues`,
         [itemId]
       );
 
@@ -181,6 +185,11 @@ function createResultsIssuesRouter(pool) {
         `INSERT INTO status_history (item_id, item_type, old_status, new_status, changed_by)
          VALUES ($1, $2, $3, $4, $5)`,
         [itemId, 'results_issue', current.rows[0].status, status, request.user.uid]
+      );
+      await client.query(
+        `INSERT INTO notifications (user_uid, message)
+         VALUES ($1, $2)`,
+        [current.rows[0].student_uid, `Your results issue for ${current.rows[0].course_code} status changed to ${status}`]
       );
       await client.query('COMMIT');
 

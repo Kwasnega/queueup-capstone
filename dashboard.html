@@ -578,7 +578,6 @@
     // State
     let currentUID = null;
     let profile = null;
-    let notificationsListenerRef = null;
 
     const facultyProgrammes = {
       "Faculty of Computing & Information Systems (FoCIS)": [
@@ -938,27 +937,19 @@
     });
 
     /********************** Notification count helper **********************/
-    function updateNotificationCount() {
+    async function updateNotificationCount() {
       if (!currentUID) {
         notificationCount.style.display = 'none';
         notificationBell.classList.remove('bell-active');
         return;
       }
-      if (notificationsListenerRef) {
-        try {
-          off(ref(db, `notifications/${currentUID}`), notificationsListenerRef);
-        } catch (error) {
-          console.debug('Firebase listener cleanup completed for notifications');
-        }
-      }
-      
-      const notificationsRef = ref(db, `notifications/${currentUID}`);
-      notificationsListenerRef = onValue(notificationsRef, (snap) => {
-        let count = 0;
-        if (snap.exists()) {
-          const entries = snap.val();
-          count = Object.values(entries).filter(x => !x.is_read).length;
-        }
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/notifications/mine`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Unable to load notifications.');
+        const count = (data.notifications || []).filter(notification => !notification.is_read).length;
         if (count > 0) {
           notificationCount.textContent = count;
           notificationCount.style.display = 'flex';
@@ -967,9 +958,9 @@
           notificationCount.style.display = 'none';
           notificationBell.classList.remove('bell-active');
         }
-      }, (err) => {
-        console.error('Error fetching notifications:', err);
-      });
+      } catch (error) {
+        console.error('Error fetching notifications:', error);
+      }
     }
 
     /********************** CLICK HANDLERS FOR NEW FEATURES **********************/
@@ -997,32 +988,26 @@
       attachNotificationsListener();
     });
 
-    function attachNotificationsListener() {
+    async function attachNotificationsListener() {
       const listEl = document.getElementById('notificationsList');
       if (!currentUID) {
         listEl.innerHTML = '<li>Please sign in to view notifications.</li>';
         return;
       }
-      
-      if (notificationsListenerRef) {
-        try {
-          off(ref(db, `notifications/${currentUID}`), notificationsListenerRef);
-        } catch (error) {
-          console.debug('Firebase listener cleanup completed for notifications modal');
-        }
-      }
-      const notificationsRef = ref(db, `notifications/${currentUID}`);
-      
-      notificationsListenerRef = onValue(notificationsRef, (snap) => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/notifications/mine`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Unable to load notifications.');
         listEl.innerHTML = '';
-        if (!snap.exists()) {
+        const notifications = data.notifications || [];
+        if (notifications.length === 0) {
           listEl.innerHTML = '<li class="item">No new notifications.</li>';
           return;
         }
-        
-        const val = snap.val();
-        // Apply deduplication filter to notifications display
-        const uniqueNotifications = filterDuplicateNotifications(val);
+        const notificationMap = Object.fromEntries(notifications.map(notification => [notification.id, notification]));
+        const uniqueNotifications = filterDuplicateNotifications(notificationMap);
         const arr = Object.entries(uniqueNotifications).map(([id, obj]) => ({ id, ...obj }));
         arr.sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         
@@ -1047,28 +1032,30 @@
           `;
           listEl.appendChild(li);
         });
-      }, (err) => {
+      } catch (err) {
         listEl.innerHTML = '<li class="item">Failed to load notifications.</li>';
         showToast('Error fetching notifications: ' + err.message, 'error');
-      });
+      }
     }
 
     async function markAllNotificationsAsRead() {
       if (!currentUID) return;
       try {
-        const notificationsRef = ref(db, `notifications/${currentUID}`);
-        const snap = await get(notificationsRef);
-        if (snap.exists()) {
-          const updates = {};
-          Object.keys(snap.val()).forEach(key => {
-            updates[key + '/is_read'] = true;
-          });
-          await update(notificationsRef, updates);
-        }
+        const response = await fetch(`${API_BASE_URL}/api/notifications/mark-all-read`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Unable to mark notifications as read.');
+        await attachNotificationsListener();
+        await updateNotificationCount();
       } catch (err) {
         console.error('Failed to mark notifications as read:', err);
+        showToast('Failed to mark notifications as read: ' + err.message, 'error');
       }
     }
+
+    setInterval(updateNotificationCount, 30000);
 
     /********************** CARD: Report Results Issue (modal form) **********************/
     document.getElementById('resultsCard').addEventListener('click', () => {
@@ -1787,128 +1774,7 @@
     
     /********************** Real-time Status Updates **********************/
     function setupRealTimeStatusUpdates() {
-      if (!currentUID || !profile?.studentId) {
-        console.log('[DASHBOARD] Skipping real-time status updates - missing UID or profile');
-        return;
-      }
-      
-      console.log('[DASHBOARD] Setting up real-time status updates for student:', profile.studentId);
-      
-      // Listen for complaint status changes from flat structure
-      const complaintsRef = ref(db, 'complaints');
-      onValue(complaintsRef, (snap) => {
-        if (snap.exists() && profile && profile.studentId) {
-          const allComplaints = snap.val();
-          Object.values(allComplaints).forEach(complaint => {
-            if (complaint && complaint.student_id === profile.studentId) {
-              updateLocalComplaintStatus(complaint.id, complaint.status, complaint.admin_logs);
-            }
-          });
-        }
-      });
-      
-      // Listen for result issue status changes from flat structure
-      const resultsRef = ref(db, 'results_issues');
-      onValue(resultsRef, (snap) => {
-        if (snap.exists() && profile && profile.studentId) {
-          const allResults = snap.val();
-          Object.values(allResults).forEach(result => {
-            if (result && result.student_id === profile.studentId) {
-              updateLocalResultStatus(result.id, result.status, result.admin_logs);
-            }
-          });
-        }
-      });
-    }
-
-    // Track processed status changes to prevent duplicates
-    let processedStatusChanges = new Set();
-
-    function updateLocalComplaintStatus(complaintId, newStatus, adminLogs) {
-      if (!complaintId || !newStatus || !currentUID) return;
-      
-      // Create unique key for this status change
-      const statusChangeKey = `complaint_${complaintId}_${newStatus}`;
-      
-      // Update UI if complaint tracking modal is open
-      const complaintsList = document.getElementById('complaintsList');
-      if (complaintsList) {
-        const statusPills = complaintsList.querySelectorAll(`[onclick*="${complaintId}"]`);
-        statusPills.forEach(pill => {
-          pill.textContent = newStatus;
-          pill.className = `status-pill s-${newStatus.replace(/\s/g,'')}`;
-        });
-      }
-      
-      // Only create notification if this exact status change hasn't been processed
-      if (!processedStatusChanges.has(statusChangeKey) && adminLogs && adminLogs.length > 0) {
-        const latestLog = adminLogs[adminLogs.length - 1];
-        if (shouldNotifyStatusChange(latestLog)) {
-          // Mark this status change as processed
-          processedStatusChanges.add(statusChangeKey);
-          
-          // Add to notifications
-          push(ref(db, `notifications/${currentUID}`), {
-            message: `Your complaint status has been updated to: ${newStatus}`,
-            created_at: new Date().toISOString(),
-            is_read: false,
-            type: 'status_update',
-            item_id: complaintId,
-            status_change_key: statusChangeKey
-          });
-        }
-      }
-    }
-
-    function updateLocalResultStatus(resultId, newStatus, adminLogs) {
-      if (!resultId || !newStatus || !currentUID) return;
-      
-      // Create unique key for this status change
-      const statusChangeKey = `result_${resultId}_${newStatus}`;
-      
-      // Update UI if results tracking modal is open
-      const resultsList = document.getElementById('resultsList');
-      if (resultsList) {
-        const statusPills = resultsList.querySelectorAll(`[onclick*="${resultId}"]`);
-        statusPills.forEach(pill => {
-          pill.textContent = newStatus;
-          pill.className = `status-pill s-${newStatus.replace(/\s/g,'')}`;
-        });
-      }
-      
-      // Only create notification if this exact status change hasn't been processed
-      if (!processedStatusChanges.has(statusChangeKey) && adminLogs && adminLogs.length > 0) {
-        const latestLog = adminLogs[adminLogs.length - 1];
-        if (shouldNotifyStatusChange(latestLog)) {
-          // Mark this status change as processed
-          processedStatusChanges.add(statusChangeKey);
-          
-          // Add to notifications
-          push(ref(db, `notifications/${currentUID}`), {
-            message: `Your results issue status has been updated to: ${newStatus}`,
-            created_at: new Date().toISOString(),
-            is_read: false,
-            type: 'status_update',
-            item_id: resultId,
-            status_change_key: statusChangeKey
-          });
-        }
-      }
-    }
-
-    function shouldNotifyStatusChange(logEntry) {
-      if (!logEntry || typeof logEntry !== 'string') return false;
-      
-      // Check if this is a recent status change (within last 5 minutes)
-      const timestampMatch = logEntry.match(/at (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/);
-      if (timestampMatch) {
-        const logTime = new Date(timestampMatch[1]);
-        const now = new Date();
-        const diffMinutes = (now - logTime) / (1000 * 60);
-        return diffMinutes <= 5; // Only notify for changes within last 5 minutes
-      }
-      
-      return false;
+      // REST polling refreshes notifications and tracking views on demand.
     }
 
     /********************** Enhanced Notification System **********************/
@@ -1916,59 +1782,7 @@
     let shownNotificationToasts = new Set();
     
     function setupEnhancedNotifications() {
-      if (!currentUID) return;
-      
-      // Enhanced notification listener that includes admin action details
-      const notificationsRef = ref(db, `notifications/${currentUID}`);
-      onValue(notificationsRef, (snap) => {
-        if (snap.exists()) {
-          const notifications = snap.val();
-          
-          // Filter out duplicate notifications based on content and recent timestamp
-          const uniqueNotifications = filterDuplicateNotifications(notifications);
-          const unreadCount = Object.values(uniqueNotifications).filter(n => !n.is_read).length;
-          
-          // Update notification count and trigger bell shake for new notifications
-          if (unreadCount > 0) {
-            notificationCount.textContent = unreadCount;
-            notificationCount.style.display = 'flex';
-            notificationBell.classList.add('bell-active');
-            
-            // Check if this is a new notification count increase
-            const previousCount = parseInt(notificationBell.dataset.previousCount || '0');
-            if (unreadCount > previousCount) {
-              // Only shake if user has been authenticated for more than 5 seconds (avoid shake on initial load)
-              if (window.dashboardAuthTime && (Date.now() - window.dashboardAuthTime) > 5000) {
-                triggerBellShake();
-              }
-            }
-            notificationBell.dataset.previousCount = unreadCount.toString();
-          } else {
-            notificationCount.style.display = 'none';
-            notificationBell.classList.remove('bell-active');
-            notificationBell.dataset.previousCount = '0';
-          }
-          
-          // Shake bell for new notifications instead of showing toast popups
-          Object.entries(uniqueNotifications).forEach(([notificationId, notification]) => {
-            if (!notification.is_read && notification.type === 'status_update') {
-              // Check if we've already shown this notification as a bell shake
-              if (!shownNotificationToasts.has(notificationId)) {
-                const notificationTime = new Date(notification.created_at);
-                const now = new Date();
-                const diffSeconds = (now - notificationTime) / 1000;
-                
-                // Shake bell only for recent notifications (within 2 minutes) that we haven't shown before
-                if (diffSeconds <= 120) {
-                  triggerBellShake();
-                  // Mark this notification as shown
-                  shownNotificationToasts.add(notificationId);
-                }
-              }
-            }
-          });
-        }
-      });
+      // Notification polling replaces the former Firebase listener.
     }
 
     /********************** Notification Deduplication Helper **********************/

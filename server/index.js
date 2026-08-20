@@ -7,6 +7,7 @@ import { createAuthRouter } from './routes/auth.js';
 import { createComplaintsRouter } from './routes/complaints.js';
 import { createResultsIssuesRouter } from './routes/resultsIssues.js';
 import { createStudentsRouter } from './routes/students.js';
+import { createNotificationsRouter } from './routes/notifications.js';
 
 dotenv.config({ path: fileURLToPath(new URL('.env', import.meta.url)) });
 
@@ -28,6 +29,7 @@ app.use('/api/auth', createAuthRouter(pool));
 app.use('/api/complaints', createComplaintsRouter(pool));
 app.use('/api/results-issues', createResultsIssuesRouter(pool));
 app.use('/api/students', createStudentsRouter(pool));
+app.use('/api/notifications', createNotificationsRouter(pool));
 
 app.get('/api/health', async (_request, response) => {
   try {
