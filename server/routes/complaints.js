@@ -53,6 +53,64 @@ function createComplaintsRouter(pool) {
     }
   });
 
+  router.delete('/:id', ...studentOnly, async (request, response) => {
+    const itemId = Number(request.params.id);
+
+    if (!Number.isInteger(itemId) || itemId < 1) {
+      return response.status(400).json({ message: 'A valid id is required' });
+    }
+
+    try {
+      const result = await pool.query(
+        'DELETE FROM complaints WHERE id = $1 AND student_id = $2 RETURNING id',
+        [itemId, request.user.studentId]
+      );
+
+      if (result.rowCount === 0) {
+        const existing = await pool.query('SELECT student_id FROM complaints WHERE id = $1', [itemId]);
+        if (existing.rowCount > 0) {
+          return response.status(403).json({ message: 'You can only delete your own complaints' });
+        }
+        return response.status(404).json({ message: 'Complaint not found' });
+      }
+
+      await pool.query('DELETE FROM status_history WHERE item_id = $1 AND item_type = $2', [itemId, 'complaint']);
+      return response.status(200).json({ message: 'Complaint deleted successfully' });
+    } catch (error) {
+      console.error('Complaint deletion failed:', error.message);
+      return response.status(500).json({ message: 'Unable to delete complaint' });
+    }
+  });
+
+  router.get('/:id/history', authenticateToken, async (request, response) => {
+    const itemId = Number(request.params.id);
+
+    if (!Number.isInteger(itemId) || itemId < 1) {
+      return response.status(400).json({ message: 'A valid id is required' });
+    }
+
+    try {
+      const complaint = await pool.query('SELECT student_id FROM complaints WHERE id = $1', [itemId]);
+      if (complaint.rowCount === 0) {
+        return response.status(404).json({ message: 'Complaint not found' });
+      }
+      if (request.user.role === 'student' && complaint.rows[0].student_id !== request.user.studentId) {
+        return response.status(403).json({ message: 'You do not have permission to view this history' });
+      }
+
+      const result = await pool.query(
+        `SELECT * FROM status_history
+         WHERE item_id = $1 AND item_type = $2
+         ORDER BY changed_at ASC`,
+        [itemId, 'complaint']
+      );
+      return response.status(200).json({ history: result.rows });
+    } catch (error) {
+      console.error('Complaint history lookup failed:', error.message);
+      return response.status(500).json({ message: 'Unable to retrieve complaint history' });
+    }
+  });
+
   router.get('/', ...adminOnly, async (request, response) => {
     const filters = [];
     const values = [];

@@ -10,8 +10,11 @@ CREATE TABLE students (
   programme VARCHAR(150),
   session VARCHAR(50),
   level VARCHAR(20),
+  semester VARCHAR(20),
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+ALTER TABLE students ADD COLUMN IF NOT EXISTS semester VARCHAR(20);
 
 CREATE TABLE admins (
   id SERIAL PRIMARY KEY,

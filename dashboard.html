@@ -578,8 +578,6 @@
     // State
     let currentUID = null;
     let profile = null;
-    let complaintsListenerRef = null;
-    let resultsListenerRef = null;
     let notificationsListenerRef = null;
 
     const facultyProgrammes = {
@@ -631,35 +629,6 @@
   modalContent.innerHTML = '';
   modalBackdrop.removeEventListener('click', backdropClickHandler);
 
-  // Safely clear the listener references with proper error handling
-  if (complaintsListenerRef) {
-    try {
-      setTimeout(() => {
-        try {
-          off(complaintsListenerRef);
-        } catch (error) {
-          console.debug('Firebase listener cleanup completed for complaints');
-        }
-      }, 10);
-    } catch (error) {
-      console.warn('Error removing complaints listener:', error);
-    }
-    complaintsListenerRef = null;
-  }
-  if (resultsListenerRef) {
-    try {
-      setTimeout(() => {
-        try {
-          off(resultsListenerRef);
-        } catch (error) {
-          console.debug('Firebase listener cleanup completed for results');
-        }
-      }, 10);
-    } catch (error) {
-      console.warn('Error removing results listener:', error);
-    }
-    resultsListenerRef = null;
-  }
 }
 
     function showSpinnerOnButton(btn, show, originalText) {
@@ -822,31 +791,43 @@
         };
 
         try {
-          if (currentUID) {
-            const userByUidRef = ref(db, `users_by_uid/${currentUID}`);
-            const userByStudentIdRef = ref(db, `users/${updatedProfile.studentId}`);
-            
-            const enhancedProfile = {
-              ...updatedProfile,
-              uid: currentUID,
-              email: profile.email,
-              studentID: updatedProfile.studentId,
-              student_id: updatedProfile.studentId,
-              group: updatedProfile.department,
-              updatedAt: new Date().toISOString()
-            };
-            
-            await update(userByUidRef, enhancedProfile);
-            await update(userByStudentIdRef, enhancedProfile);
+          const response = await fetch(`${API_BASE_URL}/api/students/me`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${localStorage.getItem('authToken')}`
+            },
+            body: JSON.stringify({
+              full_name: updatedProfile.full_name,
+              faculty: updatedProfile.faculty,
+              programme: updatedProfile.programme,
+              department: updatedProfile.department,
+              level: updatedProfile.level,
+              semester: updatedProfile.semester,
+              session: updatedProfile.session
+            })
+          });
+          const data = await response.json();
 
-            profile = { ...profile, ...enhancedProfile };
-            renderProfileData();
-
-            showToast('Profile updated successfully!', 'success');
-            setTimeout(closeModal, 700);
-          } else {
-            showToast('User not authenticated.', 'error');
+          if (response.status === 401) {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('studentId');
+            localStorage.removeItem('studentProfile');
+            window.location.href = 'login.html';
+            return;
           }
+
+          if (!response.ok) throw new Error(data.message || 'Unable to update profile.');
+
+          profile = {
+            ...data.student,
+            studentId: data.student.student_id
+          };
+          localStorage.setItem('studentProfile', JSON.stringify(profile));
+          renderProfileData();
+
+          showToast('Profile updated successfully!', 'success');
+          setTimeout(closeModal, 700);
         } catch (err) {
           console.error('Profile update error:', err);
           showToast('Error updating profile: ' + err.message, 'error');
@@ -1317,49 +1298,60 @@
       document.getElementById('closeTrackComplaintsModal').addEventListener('click', closeModal);
 
       const listEl = document.getElementById('complaintsList');
-      if (complaintsListenerRef) {
+      const loadComplaints = async () => {
         try {
-          off(complaintsListenerRef);
-        } catch (error) {
-          console.debug('Firebase listener cleanup completed for complaints tracking');
-        }
-      }
-      complaintsListenerRef = onValue(ref(db, `complaints/${profile.studentId}`), (snap) => {
-        listEl.innerHTML = '';
-        if (!snap.exists()) {
-          listEl.innerHTML = '<li class="item">No complaints submitted yet.</li>';
-          return;
-        }
-        const arr = Object.entries(snap.val()).map(([id, obj]) => ({ id, ...obj }));
-        arr.sort((a,b) => new Date(b.date_submitted) - new Date(a.date_submitted));
-        arr.forEach(c => {
-          const li = document.createElement('li');
-          li.className = 'item';
-          li.innerHTML = `
-            <div class="item-left">
-              <strong>${escapeHtml(c.subject || 'Complaint')}</strong> - ${escapeHtml(c.text)}
-              <div class="meta">${new Date(c.date_submitted).toLocaleString()}</div>
-            </div>
-            <div class="status-pill s-${c.status.replace(/\s/g,'')}" onclick="showProgressModal('complaint', '${c.id}', '${c.status}', '${escapeHtml(c.subject || c.text)}')" data-complaint-id="${c.id}">${c.status}</div>
-            <button class="delete-btn" data-id="${c.id}" style="margin-left:12px;background:#dc3545;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;">Delete</button>
-          `;
-          listEl.appendChild(li);
-        });
-
-        // Add event listeners to delete buttons
-        listEl.querySelectorAll('.delete-btn').forEach(button => {
-          button.addEventListener('click', async (e) => {
-            const id = e.target.dataset.id;
-            try {
-              await remove(ref(db, `complaints/${id}`));
-              await remove(ref(db, `complaints/${profile.studentId}/${id}`));
-              showToast('Complaint deleted.', 'success');
-            } catch (err) {
-              showToast('Failed to delete complaint: ' + err.message, 'error');
-            }
+          const response = await fetch(`${API_BASE_URL}/api/complaints/mine`, {
+            headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
           });
-        });
-      });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.message || 'Unable to load complaints.');
+
+          const complaints = data.complaints || [];
+          const arr = [...complaints].sort((a, b) => new Date(b.date_submitted) - new Date(a.date_submitted));
+          listEl.innerHTML = '';
+          if (arr.length === 0) {
+            listEl.innerHTML = '<li class="item">No complaints submitted yet.</li>';
+            return;
+          }
+
+          arr.forEach(c => {
+            const li = document.createElement('li');
+            li.className = 'item';
+            li.innerHTML = `
+              <div class="item-left">
+                <strong>${escapeHtml(c.subject || 'Complaint')}</strong> - ${escapeHtml(c.text)}
+                <div class="meta">${new Date(c.date_submitted).toLocaleString()}</div>
+              </div>
+              <div class="status-pill s-${c.status.replace(/\s/g,'')}" onclick="showProgressModal('complaint', '${c.id}', '${c.status}', '${escapeHtml(c.subject || c.text)}')" data-complaint-id="${c.id}">${c.status}</div>
+              <button class="delete-btn" data-id="${c.id}" style="margin-left:12px;background:#dc3545;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;">Delete</button>
+            `;
+            listEl.appendChild(li);
+          });
+
+          listEl.querySelectorAll('.delete-btn').forEach(button => {
+            button.addEventListener('click', async (e) => {
+              const id = e.target.dataset.id;
+              try {
+                const response = await fetch(`${API_BASE_URL}/api/complaints/${id}`, {
+                  method: 'DELETE',
+                  headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Unable to delete complaint.');
+                showToast('Complaint deleted.', 'success');
+                await loadComplaints();
+              } catch (err) {
+                showToast('Failed to delete complaint: ' + err.message, 'error');
+              }
+            });
+          });
+        } catch (err) {
+          listEl.innerHTML = '<li class="item">Failed to load complaints.</li>';
+          showToast('Error fetching complaints: ' + err.message, 'error');
+        }
+      };
+
+      loadComplaints();
     });
 
     /********************** CARD: Track Results Issues **********************/
@@ -1384,36 +1376,36 @@
       refreshResultsListIfOpen();
     });
 
-    function refreshResultsListIfOpen() {
+    async function refreshResultsListIfOpen() {
       if (!profile) return;
       const listEl = document.getElementById('resultsList');
       if (!listEl) return;
-      
-      if (resultsListenerRef) {
-        try {
-          off(resultsListenerRef);
-        } catch (error) {
-          console.debug('Firebase listener cleanup completed for results tracking');
-        }
-      }
-      resultsListenerRef = onValue(ref(db, `results_issues/${profile.studentId}`), (snap) => {
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/results-issues/mine`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Unable to load results issues.');
+
+        const issues = data.resultsIssues || [];
+        const arr = [...issues].sort((a, b) => new Date(b.date_submitted) - new Date(a.date_submitted));
         listEl.innerHTML = '';
-        if (!snap.exists()) {
+        if (arr.length === 0) {
           listEl.innerHTML = '<li class="item">No results issues submitted yet.</li>';
           return;
         }
-        const arr = Object.entries(snap.val()).map(([id,obj]) => ({ id, ...obj }));
-        arr.sort((a,b) => new Date(b.date_submitted) - new Date(a.date_submitted));
-        arr.forEach(r => {
+
+        arr.forEach(c => {
           const li = document.createElement('li');
           li.className = 'item';
           li.innerHTML = `
             <div class="item-left">
-              <strong>${escapeHtml(r.course_code || 'Course')}</strong> - ${escapeHtml(r.description)}
-              <div class="meta">${new Date(r.date_submitted).toLocaleString()}</div>
+              <strong>${escapeHtml(c.course_code || 'Course')}</strong> - ${escapeHtml(c.description)}
+              <div class="meta">${new Date(c.date_submitted).toLocaleString()}</div>
             </div>
-            <div class="status-pill s-${r.status.replace(/\s/g,'')}" onclick="showProgressModal('result', '${r.id}', '${r.status}', '${escapeHtml(r.course_code || 'Result Issue')}')" data-result-id="${r.id}">${r.status}</div>
-            <button class="delete-btn" data-id="${r.id}" style="margin-left:12px;background:#dc3545;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;">Delete</button>
+            <div class="status-pill s-${c.status.replace(/\s/g,'')}" onclick="showProgressModal('result', '${c.id}', '${c.status}', '${escapeHtml(c.course_code || 'Result Issue')}')" data-result-id="${c.id}">${c.status}</div>
+            <button class="delete-btn" data-id="${c.id}" style="margin-left:12px;background:#dc3545;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;">Delete</button>
           `;
           listEl.appendChild(li);
         });
@@ -1422,15 +1414,23 @@
           button.addEventListener('click', async (e) => {
             const id = e.target.dataset.id;
             try {
-              await remove(ref(db, `results_issues/${id}`));
-              await remove(ref(db, `results_issues/${profile.studentId}/${id}`));
+              const response = await fetch(`${API_BASE_URL}/api/results-issues/${id}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+              });
+              const data = await response.json();
+              if (!response.ok) throw new Error(data.message || 'Unable to delete results issue.');
               showToast('Result issue deleted.', 'success');
+              await refreshResultsListIfOpen();
             } catch (err) {
               showToast('Failed to delete result issue: ' + err.message, 'error');
             }
           });
         });
-      });
+      } catch (err) {
+        listEl.innerHTML = '<li class="item">Failed to load results issues.</li>';
+        showToast('Error fetching results issues: ' + err.message, 'error');
+      }
     }
     
     function escapeHtml(text) {
@@ -1490,21 +1490,24 @@
 
     async function getRealProgressData(type, itemId, currentStatus) {
       try {
-        // Get the actual item data from Firebase
-        const itemPath = type === 'complaint' ? 'complaints' : 'results_issues';
-        const itemRef = ref(db, `${itemPath}/${itemId}`);
-        const itemSnap = await get(itemRef);
-        
-        if (!itemSnap.exists()) {
-          console.warn(`Item not found: ${itemPath}/${itemId}`);
+        const resource = type === 'complaint' ? 'complaints' : 'results-issues';
+        const response = await fetch(`${API_BASE_URL}/api/${resource}/${itemId}/history`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+        });
+        const data = await response.json();
+        if (!response.ok || !data.history?.length) {
           return generateFallbackProgressData(type, currentStatus);
         }
-        
-        const itemData = itemSnap.val();
-        const adminLogs = itemData.admin_logs || [];
-        const dateSubmitted = itemData.date_submitted;
-        
-        return convertAdminLogsToTimeline(adminLogs, currentStatus, dateSubmitted, type);
+
+        const historyLogs = data.history.map(entry =>
+          `${entry.changed_by || 'Admin'} changed status to ${entry.new_status} at ${entry.changed_at}`
+        );
+        return convertAdminLogsToTimeline(
+          historyLogs,
+          currentStatus,
+          data.history[0].changed_at,
+          type
+        );
       } catch (error) {
         console.error('Error fetching real progress data:', error);
         return generateFallbackProgressData(type, currentStatus);
@@ -1530,7 +1533,7 @@
       adminLogs.forEach(log => {
         if (typeof log === 'string') {
           const timestampMatch = log.match(/at (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/);
-          const statusMatch = log.match(/changed status to (\w+)/);
+          const statusMatch = log.match(/changed status to (.+?) at /);
           const adminMatch = log.match(/^([^\\s]+)/);
           
           if (statusMatch) {

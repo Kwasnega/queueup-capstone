@@ -70,6 +70,64 @@ function createResultsIssuesRouter(pool) {
     }
   });
 
+  router.delete('/:id', ...studentOnly, async (request, response) => {
+    const itemId = Number(request.params.id);
+
+    if (!Number.isInteger(itemId) || itemId < 1) {
+      return response.status(400).json({ message: 'A valid id is required' });
+    }
+
+    try {
+      const result = await pool.query(
+        'DELETE FROM results_issues WHERE id = $1 AND student_id = $2 RETURNING id',
+        [itemId, request.user.studentId]
+      );
+
+      if (result.rowCount === 0) {
+        const existing = await pool.query('SELECT student_id FROM results_issues WHERE id = $1', [itemId]);
+        if (existing.rowCount > 0) {
+          return response.status(403).json({ message: 'You can only delete your own results issues' });
+        }
+        return response.status(404).json({ message: 'Results issue not found' });
+      }
+
+      await pool.query('DELETE FROM status_history WHERE item_id = $1 AND item_type = $2', [itemId, 'results_issue']);
+      return response.status(200).json({ message: 'Results issue deleted successfully' });
+    } catch (error) {
+      console.error('Results issue deletion failed:', error.message);
+      return response.status(500).json({ message: 'Unable to delete results issue' });
+    }
+  });
+
+  router.get('/:id/history', authenticateToken, async (request, response) => {
+    const itemId = Number(request.params.id);
+
+    if (!Number.isInteger(itemId) || itemId < 1) {
+      return response.status(400).json({ message: 'A valid id is required' });
+    }
+
+    try {
+      const issue = await pool.query('SELECT student_id FROM results_issues WHERE id = $1', [itemId]);
+      if (issue.rowCount === 0) {
+        return response.status(404).json({ message: 'Results issue not found' });
+      }
+      if (request.user.role === 'student' && issue.rows[0].student_id !== request.user.studentId) {
+        return response.status(403).json({ message: 'You do not have permission to view this history' });
+      }
+
+      const result = await pool.query(
+        `SELECT * FROM status_history
+         WHERE item_id = $1 AND item_type = $2
+         ORDER BY changed_at ASC`,
+        [itemId, 'results_issue']
+      );
+      return response.status(200).json({ history: result.rows });
+    } catch (error) {
+      console.error('Results issue history lookup failed:', error.message);
+      return response.status(500).json({ message: 'Unable to retrieve results issue history' });
+    }
+  });
+
   router.get('/', ...adminOnly, async (request, response) => {
     const values = [];
     let whereClause = '';
