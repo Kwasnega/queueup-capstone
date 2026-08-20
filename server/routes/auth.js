@@ -21,9 +21,9 @@ function createAuthRouter(pool) {
       level
     } = request.body;
 
-    if (!studentId || !email || !password) {
+    if (!studentId || !password) {
       return response.status(400).json({
-        message: 'studentId, email, and password are required'
+        message: 'studentId and password are required'
       });
     }
 

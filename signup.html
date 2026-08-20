@@ -290,23 +290,7 @@
   </footer>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, sendEmailVerification } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyDIqR0b9hA9IaLhRsVtJKSSwh9NktuIIjI",
-      authDomain: "queueup-85662.firebaseapp.com",
-      databaseURL: "https://queueup-85662-default-rtdb.firebaseio.com",
-      projectId: "queueup-85662",
-      storageBucket: "queueup-85662.firebasestorage.app",
-      messagingSenderId: "647901471109",
-      appId: "1:647901471109:web:2607f4883cd1393259e4ec"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
+    const API_BASE_URL = "http://localhost:5000";
 
     const form = document.getElementById("signupForm");
     const errorEl = document.getElementById("error");
@@ -347,48 +331,25 @@
           return;
         }
 
-        if (!email.endsWith("@live.gctu.edu.gh")) {
-          errorEl.textContent = "Please use your indexNumber@live.gctu.edu.gh email address.";
-          return;
-        }
-
-        if (!gmailAddress.endsWith("@gmail.com")) {
-          errorEl.textContent = "Please enter a valid Gmail address.";
-          return;
-        }
-
-        // Create user with Gmail address for authentication
-        const userCredential = await createUserWithEmailAndPassword(auth, gmailAddress, password);
-        const user = userCredential.user;
-
-        // Send email verification link to Gmail
-        await sendEmailVerification(user);
-
-        // Save user in database with both emails
-        await set(ref(db, "users/" + studentId), {
-          studentId: studentId,
-          email: email, // Student email for institutional purposes
-          gmailAddress: gmailAddress, // Gmail for authentication
-          uid: user.uid
+        const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ studentId, email, gmailAddress, password })
         });
+        const data = await response.json();
 
-        messageEl.textContent = "Account created! Please check your Gmail to verify your account.";
+        if (!response.ok) {
+          throw new Error(data.message || "Unable to create your account.");
+        }
+
+        messageEl.textContent = data.message || "Account created successfully! Redirecting to login...";
         form.reset();
+        setTimeout(() => {
+          window.location.href = "login.html";
+        }, 600);
 
       } catch (err) {
-        let errorMessage = err.message;
-        switch (err.code) {
-          case 'auth/email-already-in-use':
-            errorMessage = 'This email address is already in use by another account.';
-            break;
-          case 'auth/weak-password':
-            errorMessage = 'Password is too weak. It must be at least 6 characters long.';
-            break;
-          case 'auth/invalid-email':
-            errorMessage = 'The email address is not valid.';
-            break;
-        }
-        errorEl.textContent = errorMessage;
+        errorEl.textContent = err.message || "Unable to create your account.";
       } finally {
         signupBtn.innerHTML = originalBtnText;
         signupBtn.classList.remove('loading');
