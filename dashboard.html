@@ -536,11 +536,6 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import {
-      getAuth,
-      onAuthStateChanged,
-      signOut
-    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import {
       getDatabase,
       ref,
       push,
@@ -565,8 +560,8 @@
     /************************************************************************/
 
     const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
     const db = getDatabase(app);
+    const API_BASE_URL = "http://localhost:5000";
 
     // UI elements
     const studentNameDisplay = document.getElementById('studentNameDisplay');
@@ -827,15 +822,14 @@
         };
 
         try {
-          const user = auth.currentUser;
-          if (user) {
-            const userByUidRef = ref(db, `users_by_uid/${user.uid}`);
+          if (currentUID) {
+            const userByUidRef = ref(db, `users_by_uid/${currentUID}`);
             const userByStudentIdRef = ref(db, `users/${updatedProfile.studentId}`);
             
             const enhancedProfile = {
               ...updatedProfile,
-              uid: user.uid,
-              email: user.email,
+              uid: currentUID,
+              email: profile.email,
               studentID: updatedProfile.studentId,
               student_id: updatedProfile.studentId,
               group: updatedProfile.department,
@@ -873,10 +867,10 @@
         document.getElementById('s-level').textContent = profile.level || '—';
         document.getElementById('s-semester').textContent = profile.semester || '—';
         document.getElementById('s-session').textContent = profile.session || '—';
-      } else if (auth.currentUser && auth.currentUser.email) {
-        studentNameDisplay.textContent = `Hello, ${auth.currentUser.displayName || auth.currentUser.email.split('@')[0] || 'Student'}`;
-        studentIdDisplay.textContent = auth.currentUser.email;
-        document.getElementById('s-studentId').textContent = auth.currentUser.email;
+      } else if (profile && profile.email) {
+        studentNameDisplay.textContent = `Hello, ${profile.email.split('@')[0] || 'Student'}`;
+        studentIdDisplay.textContent = profile.email;
+        document.getElementById('s-studentId').textContent = profile.email;
         document.getElementById('s-faculty').textContent = '—';
         document.getElementById('s-department').textContent = '—';
         document.getElementById('s-programme').textContent = '—';
@@ -896,47 +890,65 @@
       }
     }
 
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        currentUID = user.uid;
-        // Set authentication timestamp immediately when user is authenticated
-        window.dashboardAuthTime = Date.now();
-        
-        profile = await findProfileForUid(currentUID);
-        renderProfileData();
-        updateNotificationCount();
-        setupRealTimeStatusUpdates();
-        setupEnhancedNotifications();
-        
-        // Add a delay before starting inactivity timer to ensure everything is loaded
-        setTimeout(() => {
-          if (auth.currentUser && currentUID) {
-            console.log('[DASHBOARD] Starting inactivity timer after successful authentication');
-            resetInactivityTimer();
-          }
-        }, 2000); // 2 second delay
-      } else {
-        // Clear authentication timestamp when user logs out
-        window.dashboardAuthTime = null;
-        
-        // Clear any existing timer when user logs out
-        if (inactivityTimeout) {
-          clearTimeout(inactivityTimeout);
-          inactivityTimeout = null;
-        }
-        
-        // Clear shown notification toasts tracking and processed status changes on logout
-        shownNotificationToasts.clear();
-        processedStatusChanges.clear();
-        
+    async function loadBackendProfile() {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
         window.location.href = 'login.html';
+        return;
       }
-    });
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/students/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (response.status === 401) {
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('studentId');
+          localStorage.removeItem('studentProfile');
+          window.location.href = 'login.html';
+          return;
+        }
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.message || 'Unable to load student profile');
+        }
+
+        const student = data.student;
+        currentUID = student.uid;
+        window.dashboardAuthTime = Date.now();
+        profile = {
+          ...student,
+          full_name: student.full_name || 'Student',
+          studentId: student.student_id
+        };
+        localStorage.setItem('studentProfile', JSON.stringify(profile));
+        renderProfileData();
+
+        for (const setup of [updateNotificationCount, setupRealTimeStatusUpdates, setupEnhancedNotifications]) {
+          try {
+            setup();
+          } catch (error) {
+            console.warn('Legacy Firebase dashboard helper skipped:', error.message);
+          }
+        }
+
+        setTimeout(() => resetInactivityTimer(), 2000);
+      } catch (error) {
+        console.error('Backend authentication failed:', error);
+        showToast('Unable to load your profile.', 'error');
+      }
+    }
+
+    loadBackendProfile();
 
     // Logout button
-    logoutBtn.addEventListener('click', async () => {
+    logoutBtn.addEventListener('click', () => {
       try {
-        await signOut(auth);
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('studentId');
+        localStorage.removeItem('studentProfile');
         showToast('Signed out', 'info');
         setTimeout(()=> window.location.href = 'login.html', 700);
       } catch (err) {
@@ -1720,10 +1732,6 @@
         clearTimeout(inactivityTimeout);
         inactivityTimeout = null;
       }
-      // Sign out user
-      if (auth.currentUser) {
-        signOut(auth);
-      }
     });
 
     // Inactivity auto-logout (15 minutes of inactivity)
@@ -1741,7 +1749,7 @@
       }
       
       // Only set timer if user is authenticated and profile is loaded
-      if (!auth.currentUser || !currentUID) {
+      if (!currentUID) {
         console.log('[DASHBOARD] Skipping inactivity timer - user not authenticated');
         return;
       }
@@ -1754,15 +1762,13 @@
       
       console.log('[DASHBOARD] Starting inactivity timer for authenticated user');
       inactivityTimeout = setTimeout(() => {
-        if (auth.currentUser && currentUID) {
+        if (currentUID) {
           console.log('[DASHBOARD] Inactivity timeout triggered - logging out user');
-          signOut(auth).then(() => {
-            showToast('Logged out due to inactivity.', 'info');
-            setTimeout(() => window.location.href = 'login.html', 700);
-          }).catch(err => {
-            console.error('Logout error:', err);
-            window.location.href = 'login.html';
-          });
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('studentId');
+          localStorage.removeItem('studentProfile');
+          showToast('Logged out due to inactivity.', 'info');
+          setTimeout(() => window.location.href = 'login.html', 700);
         }
       }, INACTIVITY_LIMIT);
     }
@@ -1772,7 +1778,7 @@
     ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll'].forEach(evt =>
       window.addEventListener(evt, () => {
         // Only reset timer if user is authenticated and has been authenticated for at least 3 seconds
-        if (auth.currentUser && currentUID && window.dashboardAuthTime && 
+        if (currentUID && window.dashboardAuthTime && 
             (Date.now() - window.dashboardAuthTime) >= 3000) {
           resetInactivityTimer();
         }
