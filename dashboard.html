@@ -1,0 +1,2061 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <link rel="icon" type="image/x-icon" href="gctu.ico" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>QUEUEUP Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Light theme variables */
+      --bg-primary: #f8fafc;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #f1f5f9;
+      --text-primary: #1e293b;
+      --text-secondary: #64748b;
+      --text-muted: #94a3b8;
+      --border-color: #e2e8f0;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      --accent-primary: #3b82f6;
+      --accent-hover: #2563eb;
+      --success-bg: #dcfce7;
+      --success-text: #166534;
+      --warning-bg: #fef3c7;
+      --warning-text: #92400e;
+      --error-bg: #fecaca;
+      --error-text: #dc2626;
+      --info-bg: #dbeafe;
+      --info-text: #1d4ed8;
+    }
+
+    [data-theme="dark"] {
+      /* Dark theme variables */
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-tertiary: #334155;
+      --text-primary: #f1f5f9;
+      --text-secondary: #cbd5e1;
+      --text-muted: #94a3b8;
+      --border-color: #475569;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+      --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+      --accent-primary: #60a5fa;
+      --accent-hover: #3b82f6;
+      --success-bg: #166534;
+      --success-text: #dcfce7;
+      --warning-bg: #92400e;
+      --warning-text: #fef3c7;
+      --error-bg: #dc2626;
+      --error-text: #fecaca;
+      --info-bg: #1d4ed8;
+      --info-text: #dbeafe;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0; padding: 0;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      display: flex; justify-content: center; align-items: flex-start;
+      min-height: 100vh; overflow-x: hidden;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    .container {
+      background: var(--bg-secondary);
+      border-radius: 24px;
+      width: 92%; max-width: 1100px; min-height: 90vh;
+      box-shadow: var(--shadow-xl);
+      display: flex; flex-direction: column; padding: 32px; position: relative;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+    }
+    header { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      margin-bottom: 32px; 
+      padding: 16px 24px;
+      background: var(--bg-tertiary);
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+    }
+    .logo-container { display:flex; align-items:center; gap: 8px; }
+    .logo-image { height: 40px; }
+    .logo-text { font-weight:600; font-size:1.1rem; }
+    .logo-text small { display:block; font-weight:400; font-size:0.85rem; color: var(--text-secondary); }
+    
+    .icon-group { display:flex; align-items:center; gap: 12px; }
+    
+    .theme-toggle {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border-color);
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      color: var(--text-primary);
+    }
+    
+    .theme-toggle:hover {
+      background: var(--bg-tertiary);
+      border-color: var(--accent-primary);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+    
+    .btn-profile { 
+      background: var(--bg-tertiary); 
+      border: 2px solid var(--border-color);
+      border-radius: 50%; 
+      width: 56px; 
+      height: 56px; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      cursor: pointer;
+      transition: all 0.3s ease;
+      color: var(--text-primary);
+    }
+    
+    .btn-profile:hover {
+      background: var(--accent-primary);
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+    
+    .btn-logout { 
+      background: #e05656; 
+      color: #fff; 
+      padding: 10px 18px; 
+      border-radius: 12px; 
+      border: none; 
+      cursor: pointer; 
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: var(--shadow-sm);
+    }
+    
+    .btn-logout:hover {
+      background: #dc2626;
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .notification-container { position: relative; }
+    .notification-bell { 
+      cursor: pointer; 
+      color: var(--text-secondary); 
+      transition: all 0.3s ease;
+      padding: 8px;
+      border-radius: 8px;
+    }
+    
+    .notification-bell:hover {
+      color: var(--accent-primary);
+      background: var(--bg-tertiary);
+    }
+    .notification-count { position: absolute; top: -5px; right: -5px; background: #e05656; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; justify-content: center; align-items: center; font-size: 0.75rem; font-weight: bold; }
+    .bell-active { color: #e05656 !important; }
+    
+    /* Bell shake animation for new notifications */
+    @keyframes bellShake {
+      0%, 100% { transform: rotate(0deg); }
+      10%, 30%, 50%, 70%, 90% { transform: rotate(-10deg); }
+      20%, 40%, 60%, 80% { transform: rotate(10deg); }
+    }
+    
+    .bell-shake {
+      animation: bellShake 0.6s ease-in-out;
+    }
+    
+    .bell-new-notification {
+      animation: bellShake 0.6s ease-in-out;
+      color: #e05656 !important;
+    }
+
+    .section-card { 
+      background: var(--bg-secondary); 
+      border-radius: 16px; 
+      padding: 24px; 
+      margin-bottom: 24px; 
+      box-shadow: var(--shadow-md); 
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+    }
+    
+    .section-card:hover {
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-1px);
+    }
+    .profile-card { display:flex; align-items:center; gap:14px; }
+    .profile-card .icon { 
+      width: 52px; 
+      height: 52px; 
+      border-radius: 50%; 
+      background: var(--bg-tertiary); 
+      display: flex; 
+      justify-content: center; 
+      align-items: center;
+      border: 2px solid var(--border-color);
+      color: var(--text-primary);
+    }
+    .profile-card h3 { margin:0; font-weight:600; }
+    .profile-card p { margin: 0; color: var(--text-secondary); }
+
+    .cards-grid { display:flex; gap:18px; flex-wrap:wrap; justify-content:flex-start; }
+    .card { 
+      background: var(--bg-tertiary); 
+      border-radius: 16px; 
+      padding: 24px; 
+      box-shadow: var(--shadow-md); 
+      cursor: pointer; 
+      transition: all 0.3s ease; 
+      min-width: 240px; 
+      border: 1px solid var(--border-color);
+    }
+    .card:hover { 
+      transform: translateY(-6px); 
+      box-shadow: var(--shadow-xl);
+      border-color: var(--accent-primary);
+    }
+    .card .icon-circle { 
+      width: 52px; 
+      height: 52px; 
+      background: var(--info-bg); 
+      border-radius: 50%; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      margin-bottom: 12px;
+      color: var(--info-text);
+      border: 2px solid var(--border-color);
+    }
+    .card h3 { margin:6px 0 0 0; font-size:1rem; font-weight:600; }
+    .card p { color: var(--text-secondary); font-size: 0.9rem; margin-top: 8px; }
+
+    .divider { border-top: 1px solid var(--border-color); margin: 24px 0; }
+
+    /* Modals */
+    .modal-backdrop { 
+      position:fixed; 
+      inset:0; 
+      background: var(--bg-primary); 
+      background: rgba(15,23,42,0.45); 
+      display:none; 
+      align-items:center; 
+      justify-content:center; 
+      z-index:999;
+    }
+    
+    [data-theme="dark"] .modal-backdrop {
+      background: rgba(0,0,0,0.7);
+    }
+    .modal { 
+      width: 100%; 
+      max-width: 720px; 
+      background: var(--bg-secondary); 
+      border-radius: 20px; 
+      padding: 24px; 
+      box-shadow: var(--shadow-xl); 
+      transform: translateY(12px); 
+      max-height: 90vh; 
+      display: flex; 
+      flex-direction: column;
+      border: 1px solid var(--border-color);
+    }
+    .modal-content { overflow-y: auto; padding-right: 15px; }
+    .modal header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+    .close-btn { 
+      background: var(--bg-tertiary); 
+      border: 1px solid var(--border-color); 
+      padding: 10px 14px; 
+      border-radius: 10px; 
+      cursor: pointer;
+      color: var(--text-primary);
+      transition: all 0.3s ease;
+    }
+    
+    .close-btn:hover {
+      background: var(--accent-primary);
+      color: white;
+    }
+    .form label { display:block; margin:10px 0 6px 0; color: var(--text-secondary); font-weight:600; }
+    .form input, .form select, .form textarea { 
+      width: 100%; 
+      padding: 14px; 
+      border-radius: 10px; 
+      border: 1px solid var(--border-color); 
+      background: var(--bg-tertiary); 
+      resize: vertical; 
+      box-sizing: border-box;
+      color: var(--text-primary);
+      transition: all 0.3s ease;
+    }
+    
+    .form input:focus, .form select:focus, .form textarea:focus {
+      outline: none;
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    .form textarea { min-height:120px; }
+    .primary { 
+      background: var(--accent-primary); 
+      color: white; 
+      padding: 12px 16px; 
+      border-radius: 10px; 
+      border: none; 
+      cursor: pointer; 
+      margin-top: 16px; 
+      font-weight: 700;
+      transition: all 0.3s ease;
+      box-shadow: var(--shadow-sm);
+    }
+    
+    .primary:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+    .primary.loading { opacity:0.7; pointer-events:none; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .spinner { display:inline-block;width:18px;height:18px;border:3px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;margin-right:8px;vertical-align:middle;animation:spin .9s linear infinite; }
+
+    /* Lists */
+    ul { list-style:none; padding:0; margin:0; max-width:100%; }
+    li.item { 
+      background: var(--bg-tertiary); 
+      border-radius: 12px; 
+      padding: 16px; 
+      margin-bottom: 12px; 
+      display: flex; 
+      justify-content: space-between; 
+      gap: 16px; 
+      align-items: flex-start; 
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+    }
+    
+    li.item:hover {
+      background: var(--bg-secondary);
+      box-shadow: var(--shadow-sm);
+    }
+    .item-left { max-width:78%; }
+    .meta { color: var(--text-muted); font-size: 0.9rem; margin-top: 8px; }
+    .status-pill { padding:6px 10px; border-radius:999px; font-weight:700; font-size:0.85rem; white-space:nowrap; }
+    .s-Queued { background:#bfdbfe; color:#1e3a8a; cursor:pointer; transition: all 0.2s; }
+    .s-In\ Progress { background:#fef3c7; color:#713f12; cursor:pointer; transition: all 0.2s; }
+    .s-Resolved { background:#dcfce7; color:#14532d; cursor:pointer; transition: all 0.2s; }
+    .s-Closed { background:#e5e7eb; color:#374151; cursor:pointer; transition: all 0.2s; }
+    .s-inactive { background:#f3f4f6; color:#6b7280; cursor:pointer; transition: all 0.2s; }
+    
+    .status-pill:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    
+    /* Progress Modal Styles */
+    .progress-timeline { margin: 16px 0; }
+    .timeline-item { 
+      display: flex; 
+      align-items: flex-start; 
+      margin-bottom: 16px; 
+      padding: 12px; 
+      border-radius: 8px; 
+      background: var(--bg-tertiary); 
+      border-left: 4px solid var(--border-color);
+      transition: all 0.3s ease;
+    }
+    .timeline-item.current { 
+      background: var(--info-bg); 
+      border-left-color: var(--accent-primary);
+    }
+    .timeline-item.completed { 
+      background: var(--success-bg); 
+      border-left-color: #22c55e;
+    }
+    .timeline-dot { 
+      width: 12px; 
+      height: 12px; 
+      border-radius: 50%; 
+      margin-right: 12px; 
+      margin-top: 4px; 
+      flex-shrink: 0;
+    }
+    .timeline-dot.pending { background: var(--text-muted); }
+    .timeline-dot.current { background: var(--accent-primary); }
+    .timeline-dot.completed { background: #22c55e; }
+    .timeline-content h4 { 
+      margin: 0 0 4px 0; 
+      font-size: 0.9rem; 
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .timeline-content p { 
+      margin: 0; 
+      font-size: 0.85rem; 
+      color: var(--text-secondary);
+    }
+    .timeline-content .timestamp { 
+      font-size: 0.75rem; 
+      color: var(--text-muted); 
+      margin-top: 4px;
+    }
+    .s-Queued { background:#bfdbfe; color:#1e3a8a; }
+    .s-In\ Progress { background:#fef3c7; color:#713f12; }
+    .s-Resolved { background:#dcfce7; color:#14532d; }
+    .s-Closed { background:#e5e7eb; color:#374151; }
+
+    /* Toasts */
+    .toast-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 2000; display:flex; flex-direction:column; gap:10px; }
+    .toast { padding:12px 20px; border-radius:8px; color:#fff; font-weight:700; box-shadow:0 4px 12px rgba(0,0,0,0.2); opacity:0; transform: translateY(8px); transition: all 260ms ease; }
+    .toast.show { opacity:1; transform: translateY(0); }
+    .toast.success { background:#28a745; } .toast.error { background:#dc3545; } .toast.info { background:#17a2b8; }
+
+    /* small helpers */
+    .muted { color: var(--text-muted); font-size:0.95rem; }
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 12px; }
+    .info-grid div { display: flex; flex-direction: column; }
+    .label { font-weight: 600; font-size: 0.85rem; color: var(--text-secondary); }
+
+    @media (max-width:800px){
+      .cards-grid { justify-content:center; }
+      .modal { margin: 0 10px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toast-container" id="toast-container"></div>
+
+  <div class="container">
+    <header>
+      <div class="logo-container">
+        <img src="gctu.png" alt="GCTU Logo" class="logo-image">
+        <div class="logo-text">Ghana Communication <small>Technology University (GCTU)</small></div>
+      </div>
+
+        <div class="icon-group">
+        <button id="profileCardLink" class="btn-profile" title="Edit Profile">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="28" height="28"><path d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0zM3.75 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.94.085 6.75 6.75 0 0 0-14.62 0 .75.75 0 0 1-.94-.085z"/></svg>
+        </button>
+
+        <button id="themeToggle" class="theme-toggle" title="Toggle Dark Mode">
+          <svg id="themeIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+            <path d="M12 2.25a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-1.5 0V3a.75.75 0 0 1 .75-.75ZM7.5 12a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM18.894 6.166a.75.75 0 0 0-1.06-1.06l-1.591 1.59a.75.75 0 1 0 1.06 1.061l1.591-1.59ZM21.75 12a.75.75 0 0 1-.75.75h-2.25a.75.75 0 0 1 0-1.5H21a.75.75 0 0 1 .75.75ZM17.834 18.894a.75.75 0 0 0 1.06-1.06l-1.59-1.591a.75.75 0 1 0-1.061 1.06l1.59 1.591ZM12 18a.75.75 0 0 1 .75.75V21a.75.75 0 0 1-1.5 0v-2.25A.75.75 0 0 1 12 18ZM7.758 17.303a.75.75 0 0 0-1.061-1.06l-1.591 1.59a.75.75 0 0 0 1.06 1.061l1.591-1.59ZM6 12a.75.75 0 0 1-.75.75H3a.75.75 0 0 1 0-1.5h2.25A.75.75 0 0 1 6 12ZM6.697 7.757a.75.75 0 0 0 1.06-1.06l-1.59-1.591a.75.75 0 0 0-1.061 1.06l1.59 1.591Z" />
+          </svg>
+        </button>
+
+        <div class="notification-container" title="Notifications">
+          <svg class="notification-bell" id="notificationBell" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+            <path d="M14.5 6.2a1.5 1.5 0 0 1-3 0 1.5 1.5 0 0 1 3 0Z" />
+            <path fill-rule="evenodd" d="M12 2.25A6 6 0 0 0 6 8v3.684l-1.928 2.314a.75.75 0 0 0 1.054 1.115l.412-.383a.5 5 0 0 0 .154-.423v-1.127a6.742 6.742 0 0 1 2.572-5.266A4.5 4.5 0 0 1 12 5.25a4.5 4.5 0 0 1 4.5 4.5v1.127a.5 5 0 0 0 .154.423l.412.383a.75.75 0 0 0 1.054-1.115L18 11.684V8a6 6 0 0 0-6-6Zm2.25 15c.666 0 1.318-.112 1.936-.334a7.514 7.514 0 0 0 4.093-3.664.75.75 0 0 0-.798-1.077 5.964 5.964 0 0 1-3.681 2.404c-.183.045-.369.07-.55.071H9.75a6.002 6.002 0 0 1-6-6v-2.25c0-.414.336-.75.75-.75S2.25 8.636 2.25 9v2.25a7.502 7.502 0 0 0 7.5 7.5h4.5ZM12 21.75a2.25 2.25 0 0 1-2.25-2.25h4.5A2.25 2.25 0 0 1 12 21.75Z" clip-rule="evenodd" />
+          </svg>
+          <span id="notificationCount" class="notification-count" style="display:none;">0</span>
+        </div>
+
+        <button id="logoutBtn" class="btn-logout" title="Log out">Log out</button>
+      </div>
+    </header>
+
+    <section id="mainScreen" class="section-card">
+      <div class="profile-card">
+        <div class="icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" width="28" height="28"><path d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0zM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.941.085 6.75 6.75 0 0 0-14.616 0 .75.75 0 0 1-.941-.085Z"/></svg>
+        </div>
+        <div>
+          <h3 id="studentNameDisplay">Loading name...</h3>
+          <p id="studentIdDisplay">Loading student ID...</p>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="section-card academic-card">
+        <h3>Academic Information</h3>
+        <div class="info-grid">
+          <div><span class="label">Student ID</span><span id="s-studentId"></span></div>
+          <div><span class="label">Faculty</span><span id="s-faculty"></span></div>
+          <div><span class="label">Group</span><span id="s-department"></span></div>
+          <div><span class="label">Programme</span><span id="s-programme"></span></div>
+          <div><span class="label">Level</span><span id="s-level"></span></div>
+          <div><span class="label">Semester</span><span id="s-semester"></span></div>
+          <div><span class="label">Session</span><span id="s-session"></span></div>
+        </div>
+      </div>
+
+      <div class="cards-grid" style="margin-top:12px;">
+        <div id="resultsCard" class="card" role="button" tabindex="0" title="Report a problem with your academic results">
+          <div class="icon-circle">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M9 2.25a2.25 2.25 0 0 1 4.5 0h3.75A2.25 2.25 0 0 1 19.5 4.5v15a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5v-15A2.25 2.25 0 0 1 6.75 2.25H9z"/></svg>
+          </div>
+          <h3>Report Results Issue</h3>
+          <p class="muted">Report missing or incorrect grades</p>
+        </div>
+
+        <div id="complaintCard" class="card" role="button" tabindex="0" title="Make a general complaint">
+          <div class="icon-circle">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M2.25 8.67v8.58a3 3 0 0 0 3 3h15a3 3 0 0 0 3-3V8.67"/></svg>
+          </div>
+          <h3>Make a Complaint</h3>
+          <p class="muted">Report any non-academic issues</p>
+        </div>
+
+        <div id="trackComplaintsCard" class="card" role="button" tabindex="0" title="View status of your complaints">
+          <div class="icon-circle">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M10.5 3.75a6.75 6.75 0 1 0 0 13.5"/></svg>
+          </div>
+          <h3>Track Complaint</h3>
+          <p class="muted">See progress on your submitted complaints</p>
+        </div>
+
+        <div id="trackResultsCard" class="card" role="button" tabindex="0" title="View status of your results issues">
+          <div class="icon-circle">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M10.5 3.75a6.75 6.75 0 1 0 0 13.5"/></svg>
+          </div>
+          <h3>Track Results Issue</h3>
+          <p class="muted">See progress on reported results issues</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="modalBackdrop" class="modal-backdrop" aria-hidden="true">
+    <div id="modal" class="modal" role="dialog" aria-modal="true">
+      <div class="modal-content">
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import {
+      getDatabase,
+      ref,
+      push,
+      set,
+      onValue,
+      get,
+      update,
+      off,
+      remove
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+    /*********** Replace these with your firebase project config ***********/
+    const firebaseConfig = {
+      apiKey: "AIzaSyDIqR0b9hA9IaLhRsVtJKSSwh9NktuIIjI",
+      authDomain: "queueup-85662.firebaseapp.com",
+      databaseURL: "https://queueup-85662-default-rtdb.firebaseio.com",
+      projectId: "queueup-85662",
+      storageBucket: "queueup-85662.firebasestorage.app",
+      messagingSenderId: "647901471109",
+      appId: "1:647901471109:web:2607f4883cd1393259e4ec"
+    };
+    /************************************************************************/
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    // UI elements
+    const studentNameDisplay = document.getElementById('studentNameDisplay');
+    const studentIdDisplay = document.getElementById('studentIdDisplay');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const modalBackdrop = document.getElementById('modalBackdrop');
+    const modalContent = document.querySelector('.modal-content');
+    const toastContainer = document.getElementById('toast-container');
+    const profileCardLink = document.getElementById('profileCardLink');
+    const notificationBell = document.getElementById('notificationBell');
+    const notificationCount = document.getElementById('notificationCount');
+    const cardsGrid = document.querySelector('.cards-grid');
+
+    // State
+    let currentUID = null;
+    let profile = null;
+    let complaintsListenerRef = null;
+    let resultsListenerRef = null;
+    let notificationsListenerRef = null;
+
+    const facultyProgrammes = {
+      "Faculty of Computing & Information Systems (FoCIS)": [
+        "BSc Information Technology", "BSc Mobile Computing", "BSc Information Systems",
+        "BSc Computer Science", "BSc Computer Science (Cybersecurity option)", "BSc Data Science and Analytics",
+        "BSc Network and Systems", "BSc Software Engineering", "BSc Internet of Things and Big Data"
+      ],
+      "Faculty of Engineering (FoE)": [
+        "BSc Telecommunications Engineering", "BSc Computer Engineering", "BSc Electrical & Electronic Engineering",
+        "BSc Mathematics", "Diploma in Telecommunications Engineering"
+      ],
+      "GCTU Business School": [
+        "BSc Accounting with Computing", "BSc Economics", "BSc Procurement and Logistics",
+        "BSc Banking and Finance", "BSc E-Commerce & Marketing Management",
+        "BSc Business Administration with options in HRM, Marketing, Accounting, Management",
+        "Diploma in Public Relations", "Diploma in Management", "Diploma in Accounting option", "Diploma in Marketing option"
+      ]
+    };
+
+    /********************** UI helpers **********************/
+    function showToast(message, type='info') {
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.textContent = message;
+      toastContainer.appendChild(t);
+      setTimeout(()=> t.classList.add('show'), 20);
+      setTimeout(()=> { t.classList.remove('show'); t.addEventListener('transitionend', ()=> t.remove()); }, 3500);
+    }
+
+    function openModal(htmlContent) {
+      modalContent.innerHTML = htmlContent;
+      modalBackdrop.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+      modalBackdrop.setAttribute('aria-hidden', 'false');
+      setTimeout(() => {
+        modalBackdrop.addEventListener('click', backdropClickHandler);
+      }, 50);
+    }
+    
+    function backdropClickHandler(e) {
+      if (e.target === modalBackdrop) closeModal();
+    }
+    
+    function closeModal() {
+  modalBackdrop.style.display = 'none';
+  document.body.style.overflow = '';
+  modalBackdrop.setAttribute('aria-hidden', 'true');
+  modalContent.innerHTML = '';
+  modalBackdrop.removeEventListener('click', backdropClickHandler);
+
+  // Safely clear the listener references with proper error handling
+  if (complaintsListenerRef) {
+    try {
+      setTimeout(() => {
+        try {
+          off(complaintsListenerRef);
+        } catch (error) {
+          console.debug('Firebase listener cleanup completed for complaints');
+        }
+      }, 10);
+    } catch (error) {
+      console.warn('Error removing complaints listener:', error);
+    }
+    complaintsListenerRef = null;
+  }
+  if (resultsListenerRef) {
+    try {
+      setTimeout(() => {
+        try {
+          off(resultsListenerRef);
+        } catch (error) {
+          console.debug('Firebase listener cleanup completed for results');
+        }
+      }, 10);
+    } catch (error) {
+      console.warn('Error removing results listener:', error);
+    }
+    resultsListenerRef = null;
+  }
+}
+
+    function showSpinnerOnButton(btn, show, originalText) {
+      if (!btn) return;
+      if (show) {
+        btn.dataset.orig = btn.innerHTML;
+        btn.classList.add('primary','loading');
+        btn.innerHTML = '<div class="spinner"></div> Submitting...';
+        btn.disabled = true;
+      } else {
+        btn.classList.remove('loading');
+        btn.innerHTML = originalText || btn.dataset.orig || 'Submit';
+        btn.disabled = false;
+      }
+    }
+
+    /********************** auth & profile lookup **********************/
+    async function findProfileForUid(uid) {
+      if (!uid) return null;
+      try {
+        const byUidSnap = await get(ref(db, `users_by_uid/${uid}`));
+        if (byUidSnap.exists()) {
+          return byUidSnap.val();
+        }
+        const usersSnap = await get(ref(db, `users`));
+        if (usersSnap.exists()) {
+          const allUsers = usersSnap.val();
+          for (const key of Object.keys(allUsers)) {
+            const u = allUsers[key];
+            if (u && (u.uid === uid || u.uid === uid.toString())) {
+              return {
+                studentId: u.studentId || u.student_id || key,
+                email: u.email || u.email_address || '',
+                full_name: u.full_name || u.name || '',
+                department: u.department || ''
+              };
+            }
+          }
+        }
+      } catch (err) {
+        console.error('findProfileForUid error', err);
+      }
+      return null;
+    }
+
+    /********************** CARD: Edit Profile (modal form) **********************/
+    profileCardLink.addEventListener('click', () => {
+      const modalHtml = `
+        <header>
+          <h2>Edit Your Profile</h2>
+          <button id="closeModalBtn" class="close-btn">Close</button>
+        </header>
+        <div class="form">
+          <label>Full Name</label>
+          <input type="text" id="p-fullname" value="${profile?.full_name || ''}" />
+
+          <label>Student ID</label>
+          <input type="text" id="p-studentId" readonly value="${profile?.studentId || ''}" />
+
+          <label>Faculty</label>
+          <select id="p-faculty">
+            <option value="">-- Select a Faculty --</option>
+            ${Object.keys(facultyProgrammes).map(faculty => `<option value="${faculty}" ${profile?.faculty === faculty ? 'selected' : ''}>${faculty}</option>`).join('')}
+          </select>
+
+          <label>Programme</label>
+          <select id="p-programme">
+            <option value="">-- Select a Programme --</option>
+          </select>
+
+          <label>Group</label>
+          <select id="p-department">
+            <option value="Group A" ${profile?.department === 'Group A' ? 'selected' : ''}>Group A</option>
+            <option value="Group B" ${profile?.department === 'Group B' ? 'selected' : ''}>Group B</option>
+            <option value="Group C" ${profile?.department === 'Group C' ? 'selected' : ''}>Group C</option>
+            <option value="Group D" ${profile?.department === 'Group D' ? 'selected' : ''}>Group D</option>
+            <option value="Group E" ${profile?.department === 'Group E' ? 'selected' : ''}>Group E</option>
+            <option value="Group F" ${profile?.department === 'Group F' ? 'selected' : ''}>Group F</option>
+            <option value="Group G" ${profile?.department === 'Group G' ? 'selected' : ''}>Group G</option>
+            <option value="Group H" ${profile?.department === 'Group H' ? 'selected' : ''}>Group H</option>
+            <option value="Group I" ${profile?.department === 'Group I' ? 'selected' : ''}>Group I</option>
+            <option value="Group J" ${profile?.department === 'Group J' ? 'selected' : ''}>Group J</option>
+            <option value="Group K" ${profile?.department === 'Group K' ? 'selected' : ''}>Group K</option>
+            <option value="Group L" ${profile?.department === 'Group L' ? 'selected' : ''}>Group L</option>
+            <option value="Group M" ${profile?.department === 'Group M' ? 'selected' : ''}>Group M</option>
+            <option value="Group N" ${profile?.department === 'Group N' ? 'selected' : ''}>Group N</option>
+            <option value="Group O" ${profile?.department === 'Group O' ? 'selected' : ''}>Group O</option>
+            <option value="Group P" ${profile?.department === 'Group P' ? 'selected' : ''}>Group P</option>
+          </select>
+
+          <label>Level</label>
+          <select id="p-level">
+            <option value="Level 100" ${profile?.level === 'Level 100' ? 'selected' : ''}>Level 100</option>
+            <option value="Level 200" ${profile?.level === 'Level 200' ? 'selected' : ''}>Level 200</option>
+            <option value="Level 300" ${profile?.level === 'Level 300' ? 'selected' : ''}>Level 300</option>
+            <option value="Level 400" ${profile?.level === 'Level 400' ? 'selected' : ''}>Level 400</option>
+          </select>
+
+          <label>Current Semester</label>
+          <select id="p-semester">
+            <option value="First Semester" ${profile?.semester === 'First Semester' ? 'selected' : ''}>First Semester</option>
+            <option value="Second Semester" ${profile?.semester === 'Second Semester' ? 'selected' : ''}>Second Semester</option>
+          </select>
+
+          <label>Session</label>
+          <select id="p-session">
+            <option value="Morning" ${profile?.session === 'Morning' ? 'selected' : ''}>Morning</option>
+            <option value="Evening" ${profile?.session === 'Evening' ? 'selected' : ''}>Evening</option>
+            <option value="Weekend" ${profile?.session === 'Weekend' ? 'selected' : ''}>Weekend</option>
+          </select>
+
+          <button id="p-submit" class="primary">Save Changes</button>
+        </div>
+      `;
+      openModal(modalHtml);
+      document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+
+      const facultySelect = document.getElementById('p-faculty');
+      const programmeSelect = document.getElementById('p-programme');
+
+      const updateProgrammeOptions = (selectedFaculty) => {
+        programmeSelect.innerHTML = '<option value="">-- Select a Programme --</option>';
+        if (selectedFaculty && facultyProgrammes[selectedFaculty]) {
+          facultyProgrammes[selectedFaculty].forEach(programme => {
+            const option = document.createElement('option');
+            option.value = programme;
+            option.textContent = programme;
+            if (profile?.programme === programme) {
+              option.selected = true;
+            }
+            programmeSelect.appendChild(option);
+          });
+        }
+      };
+
+      if (facultySelect.value) {
+        updateProgrammeOptions(facultySelect.value);
+      }
+
+      facultySelect.addEventListener('change', (e) => {
+        profile.programme = '';
+        updateProgrammeOptions(e.target.value);
+      });
+
+      document.getElementById('p-submit').addEventListener('click', async (e) => {
+        e.preventDefault();
+        const btn = e.target;
+        const orig = btn.innerHTML;
+        showSpinnerOnButton(btn, true, orig);
+
+        const updatedProfile = {
+          full_name: document.getElementById('p-fullname').value,
+          studentId: document.getElementById('p-studentId').value,
+          faculty: document.getElementById('p-faculty').value,
+          programme: document.getElementById('p-programme').value,
+          department: document.getElementById('p-department').value,
+          level: document.getElementById('p-level').value,
+          semester: document.getElementById('p-semester').value,
+          session: document.getElementById('p-session').value,
+        };
+
+        try {
+          const user = auth.currentUser;
+          if (user) {
+            const userByUidRef = ref(db, `users_by_uid/${user.uid}`);
+            const userByStudentIdRef = ref(db, `users/${updatedProfile.studentId}`);
+            
+            const enhancedProfile = {
+              ...updatedProfile,
+              uid: user.uid,
+              email: user.email,
+              studentID: updatedProfile.studentId,
+              student_id: updatedProfile.studentId,
+              group: updatedProfile.department,
+              updatedAt: new Date().toISOString()
+            };
+            
+            await update(userByUidRef, enhancedProfile);
+            await update(userByStudentIdRef, enhancedProfile);
+
+            profile = { ...profile, ...enhancedProfile };
+            renderProfileData();
+
+            showToast('Profile updated successfully!', 'success');
+            setTimeout(closeModal, 700);
+          } else {
+            showToast('User not authenticated.', 'error');
+          }
+        } catch (err) {
+          console.error('Profile update error:', err);
+          showToast('Error updating profile: ' + err.message, 'error');
+        } finally {
+          showSpinnerOnButton(btn, false, orig);
+        }
+      });
+    });
+
+    function renderProfileData() {
+      if (profile && profile.full_name && profile.studentId) {
+        studentNameDisplay.textContent = `Hello, ${profile.full_name}`;
+        studentIdDisplay.textContent = profile.studentId;
+        document.getElementById('s-studentId').textContent = profile.studentId;
+        document.getElementById('s-faculty').textContent = profile.faculty || '—';
+        document.getElementById('s-department').textContent = profile.department || '—';
+        document.getElementById('s-programme').textContent = profile.programme || '—';
+        document.getElementById('s-level').textContent = profile.level || '—';
+        document.getElementById('s-semester').textContent = profile.semester || '—';
+        document.getElementById('s-session').textContent = profile.session || '—';
+      } else if (auth.currentUser && auth.currentUser.email) {
+        studentNameDisplay.textContent = `Hello, ${auth.currentUser.displayName || auth.currentUser.email.split('@')[0] || 'Student'}`;
+        studentIdDisplay.textContent = auth.currentUser.email;
+        document.getElementById('s-studentId').textContent = auth.currentUser.email;
+        document.getElementById('s-faculty').textContent = '—';
+        document.getElementById('s-department').textContent = '—';
+        document.getElementById('s-programme').textContent = '—';
+        document.getElementById('s-level').textContent = '—';
+        document.getElementById('s-semester').textContent = '—';
+        document.getElementById('s-session').textContent = '—';
+      } else {
+        studentNameDisplay.textContent = `Hello, Student`;
+        studentIdDisplay.textContent = 'No ID';
+        document.getElementById('s-studentId').textContent = 'No ID';
+        document.getElementById('s-faculty').textContent = '—';
+        document.getElementById('s-department').textContent = '—';
+        document.getElementById('s-programme').textContent = '—';
+        document.getElementById('s-level').textContent = '—';
+        document.getElementById('s-semester').textContent = '—';
+        document.getElementById('s-session').textContent = '—';
+      }
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        currentUID = user.uid;
+        // Set authentication timestamp immediately when user is authenticated
+        window.dashboardAuthTime = Date.now();
+        
+        profile = await findProfileForUid(currentUID);
+        renderProfileData();
+        updateNotificationCount();
+        setupRealTimeStatusUpdates();
+        setupEnhancedNotifications();
+        
+        // Add a delay before starting inactivity timer to ensure everything is loaded
+        setTimeout(() => {
+          if (auth.currentUser && currentUID) {
+            console.log('[DASHBOARD] Starting inactivity timer after successful authentication');
+            resetInactivityTimer();
+          }
+        }, 2000); // 2 second delay
+      } else {
+        // Clear authentication timestamp when user logs out
+        window.dashboardAuthTime = null;
+        
+        // Clear any existing timer when user logs out
+        if (inactivityTimeout) {
+          clearTimeout(inactivityTimeout);
+          inactivityTimeout = null;
+        }
+        
+        // Clear shown notification toasts tracking and processed status changes on logout
+        shownNotificationToasts.clear();
+        processedStatusChanges.clear();
+        
+        window.location.href = 'login.html';
+      }
+    });
+
+    // Logout button
+    logoutBtn.addEventListener('click', async () => {
+      try {
+        await signOut(auth);
+        showToast('Signed out', 'info');
+        setTimeout(()=> window.location.href = 'login.html', 700);
+      } catch (err) {
+        showToast('Sign out failed: ' + err.message, 'error');
+      }
+    });
+
+    /********************** Notification count helper **********************/
+    function updateNotificationCount() {
+      if (!currentUID) {
+        notificationCount.style.display = 'none';
+        notificationBell.classList.remove('bell-active');
+        return;
+      }
+      if (notificationsListenerRef) {
+        try {
+          off(ref(db, `notifications/${currentUID}`), notificationsListenerRef);
+        } catch (error) {
+          console.debug('Firebase listener cleanup completed for notifications');
+        }
+      }
+      
+      const notificationsRef = ref(db, `notifications/${currentUID}`);
+      notificationsListenerRef = onValue(notificationsRef, (snap) => {
+        let count = 0;
+        if (snap.exists()) {
+          const entries = snap.val();
+          count = Object.values(entries).filter(x => !x.is_read).length;
+        }
+        if (count > 0) {
+          notificationCount.textContent = count;
+          notificationCount.style.display = 'flex';
+          notificationBell.classList.add('bell-active');
+        } else {
+          notificationCount.style.display = 'none';
+          notificationBell.classList.remove('bell-active');
+        }
+      }, (err) => {
+        console.error('Error fetching notifications:', err);
+      });
+    }
+
+    /********************** CLICK HANDLERS FOR NEW FEATURES **********************/
+    notificationBell.addEventListener('click', async () => {
+      if (!currentUID) {
+        showToast('Please log in to view notifications.', 'info');
+        return;
+      }
+      const modalHtml = `
+        <header>
+          <h2>Notifications</h2>
+          <button id="closeNotificationsModal" class="close-btn">Close</button>
+        </header>
+        <div style="max-height:60vh; overflow:auto; padding-top:8px;">
+          <ul id="notificationsList"></ul>
+        </div>
+        <div style="text-align:right; margin-top:10px;">
+          <button id="markAllReadBtn" class="primary">Mark All As Read</button>
+        </div>
+      `;
+      openModal(modalHtml);
+      document.getElementById('closeNotificationsModal').addEventListener('click', closeModal);
+      document.getElementById('markAllReadBtn').addEventListener('click', markAllNotificationsAsRead);
+
+      attachNotificationsListener();
+    });
+
+    function attachNotificationsListener() {
+      const listEl = document.getElementById('notificationsList');
+      if (!currentUID) {
+        listEl.innerHTML = '<li>Please sign in to view notifications.</li>';
+        return;
+      }
+      
+      if (notificationsListenerRef) {
+        try {
+          off(ref(db, `notifications/${currentUID}`), notificationsListenerRef);
+        } catch (error) {
+          console.debug('Firebase listener cleanup completed for notifications modal');
+        }
+      }
+      const notificationsRef = ref(db, `notifications/${currentUID}`);
+      
+      notificationsListenerRef = onValue(notificationsRef, (snap) => {
+        listEl.innerHTML = '';
+        if (!snap.exists()) {
+          listEl.innerHTML = '<li class="item">No new notifications.</li>';
+          return;
+        }
+        
+        const val = snap.val();
+        // Apply deduplication filter to notifications display
+        const uniqueNotifications = filterDuplicateNotifications(val);
+        const arr = Object.entries(uniqueNotifications).map(([id, obj]) => ({ id, ...obj }));
+        arr.sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        
+        if (arr.length === 0) {
+          listEl.innerHTML = '<li class="item">No new notifications.</li>';
+          return;
+        }
+        
+        arr.forEach(item => {
+          const li = document.createElement('li');
+          li.className = 'item';
+          if (!item.is_read) {
+            li.style.background = 'var(--info-bg)';
+            li.style.fontWeight = '600';
+            li.style.color = 'var(--info-text)';
+          }
+          li.innerHTML = `
+            <div class="item-left">
+              ${escapeHtml(item.message || '')}
+              <div class="meta">${new Date(item.created_at || Date.now()).toLocaleString()}</div>
+            </div>
+          `;
+          listEl.appendChild(li);
+        });
+      }, (err) => {
+        listEl.innerHTML = '<li class="item">Failed to load notifications.</li>';
+        showToast('Error fetching notifications: ' + err.message, 'error');
+      });
+    }
+
+    async function markAllNotificationsAsRead() {
+      if (!currentUID) return;
+      try {
+        const notificationsRef = ref(db, `notifications/${currentUID}`);
+        const snap = await get(notificationsRef);
+        if (snap.exists()) {
+          const updates = {};
+          Object.keys(snap.val()).forEach(key => {
+            updates[key + '/is_read'] = true;
+          });
+          await update(notificationsRef, updates);
+        }
+      } catch (err) {
+        console.error('Failed to mark notifications as read:', err);
+      }
+    }
+
+    /********************** CARD: Report Results Issue (modal form) **********************/
+    document.getElementById('resultsCard').addEventListener('click', () => {
+      const groupOptions = Array.from({length: 16}, (_, i) => String.fromCharCode(65 + i)).map(g => `<option value="Group ${g}">Group ${g}</option>`).join('');
+      const modalHtml = `
+        <header>
+          <h2>Report Results Issue</h2>
+          <button id="closeModalBtn" class="close-btn">Close</button>
+        </header>
+        <div class="form">
+          <label>Student ID</label>
+          <input type="text" id="ri-studentId" readonly value="${profile?.studentId || ''}" />
+
+          <label>Faculty</label>
+          <input type="text" id="ri-faculty" readonly value="${profile?.faculty || ''}" />
+
+          <label>Group</label>
+          <input type="text" id="ri-department" readonly value="${profile?.department || ''}" />
+
+          <label>Programme</label>
+          <input type="text" id="ri-programme" readonly value="${profile?.programme || ''}" />
+
+          <label>Session</label>
+          <input type="text" id="ri-session" readonly value="${profile?.session || ''}" />
+
+          <label>Course Code</label>
+          <input type="text" id="ri-course" placeholder="e.g., CBT 101" />
+
+          <label>Course Title</label>
+          <input type="text" id="ri-course-title" placeholder="e.g., Introduction to Computing" />
+
+          <label>Name of Lecturer</label>
+          <input type="text" id="ri-lecturer" placeholder="e.g., Dr. Gideon Genius" />
+
+          <label>Issue Description</label>
+          <select id="ri-desc">
+            <option value="">Select an issue</option>
+            <option>Missing Grade</option>
+            <option>Discrepancy in Grade</option>
+            <option>Incorrect Course Registration</option>
+            <option>Not on Examination List</option>
+          </select>
+
+          <label>Any Comment? <span style="color: var(--text-muted);font-weight:normal;">(optional)</span></label>
+          <textarea id="ri-comment" placeholder="Add any additional details..."></textarea>
+
+          <button id="ri-submit" class="primary">Submit Results Issue</button>
+        </div>
+      `;
+      openModal(modalHtml);
+
+      const rid = document.getElementById('ri-studentId');
+      if (profile && profile.studentId) rid.value = profile.studentId;
+      document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+
+      document.getElementById('ri-submit').addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        const btn = ev.currentTarget;
+        const orig = btn.innerHTML;
+        showSpinnerOnButton(btn, true);
+
+        const payload = {
+          student_id: profile?.studentId || '',
+          faculty: profile?.faculty || '',
+          department: profile?.department || '',
+          programme: profile?.programme || '',
+          session: profile?.session || '',
+          course_code: document.getElementById('ri-course').value.trim(),
+          course_title: document.getElementById('ri-course-title').value.trim(),
+          lecturer_name: document.getElementById('ri-lecturer').value.trim(),
+          description: document.getElementById('ri-desc').value,
+          comment: document.getElementById('ri-comment').value.trim(),
+          date_submitted: new Date().toISOString(),
+          status: 'Queued'
+        };
+
+        if (!payload.faculty || !payload.course_code || !payload.description) {
+          showToast('Please fill faculty, course code and issue description.', 'error');
+          showSpinnerOnButton(btn, false, orig);
+          return;
+        }
+
+        try {
+          const newRFlat = push(ref(db, `results_issues`));
+          const resultsRefStudent = ref(db, `results_issues/${payload.student_id}/${newRFlat.key}`);
+          const resultData = { ...payload, id: newRFlat.key };
+
+          // Only save to flat structure for admin access and student-specific for student tracking
+          await set(newRFlat, resultData);
+          await set(resultsRefStudent, resultData);
+
+          await push(ref(db, `notifications/${currentUID}`), {
+            message: 'Results issue submitted',
+            created_at: new Date().toISOString(),
+            is_read: false
+          });
+
+          showToast('Results issue submitted.', 'success');
+          refreshResultsListIfOpen();
+          setTimeout(closeModal, 700);
+        } catch (err) {
+          showToast('Error submitting results issue: ' + err.message, 'error');
+        } finally {
+          showSpinnerOnButton(btn, false, orig);
+          updateNotificationCount();
+        }
+      });
+    });
+
+    /********************** CARD: Make a Complaint (modal form) **********************/
+    document.getElementById('complaintCard').addEventListener('click', () => {
+      const modalHtml = `
+        <header>
+          <h2>Submit a Complaint</h2>
+          <button id="closeModalBtn" class="close-btn">Close</button>
+        </header>
+        <div class="form">
+          <label>Student ID</label>
+          <input type="text" id="c-studentId" readonly value="${profile?.studentId || ''}" />
+
+          <label>Complaint Subject</label>
+          <input type="text" id="c-subject" placeholder="e.g., Timetable Clash" />
+
+          <label>Complaint Type</label>
+          <select id="c-type">
+            <option value="" disabled selected>Select a type</option>
+            <option value="Academic">Academic</option>
+            <option value="Administrative">Administrative</option>
+            <option value="Facilities">Facilities</option>
+            <option value="Other">Other</option>
+          </select>
+
+          <label>Submit To</label>
+          <select id="c-recipient">
+            <option value="General" selected>General (visible to all relevant admins)</option>
+            <option value="HOD" data-email="hod@gctu.edu.gh" data-route="hod">Head of Department (HOD)</option>
+            <option value="Registrar" data-email="registrar@gctu.edu.gh" data-route="registrar">Registrar</option>
+            <option value="Dean" data-email="dean@gctu.edu.gh" data-route="dean">Dean</option>
+            <option value="Exam Officer" data-email="exam@gctu.edu.gh" data-route="exam_officer">Exam Officer</option>
+          </select>
+
+          <label>Complaint Message</label>
+          <textarea id="c-message" placeholder="Please describe your complaint in detail..."></textarea>
+
+          <button id="c-submit" class="primary">Submit Complaint</button>
+        </div>
+      `;
+      openModal(modalHtml);
+      document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+
+      const submitBtn = document.getElementById('c-submit');
+      submitBtn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        const orig = submitBtn.innerHTML;
+        showSpinnerOnButton(submitBtn, true);
+
+        const studentIdValue = document.getElementById('c-studentId').value || (profile && profile.studentId) || '';
+        const subjectValue = document.getElementById('c-subject').value.trim();
+        const typeValue = document.getElementById('c-type').value;
+        const recipientSelect = document.getElementById('c-recipient');
+        const recipientValue = recipientSelect.value;
+        const selectedOption = recipientSelect.options[recipientSelect.selectedIndex];
+        const recipientEmail = selectedOption.getAttribute('data-email') || null;
+        const adminRoute = selectedOption.getAttribute('data-route') || 'general';
+        const messageValue = document.getElementById('c-message').value.trim();
+
+        if (!subjectValue || !typeValue || !recipientValue || !messageValue) {
+          showToast('Please fill all fields.', 'error');
+          showSpinnerOnButton(submitBtn, false, orig);
+          return;
+        }
+
+        try {
+          const complaintData = {
+            student_id: studentIdValue,
+            user_uid: currentUID,
+            subject: subjectValue,
+            type: typeValue,
+            recipient: recipientValue,
+            recipient_email: recipientEmail,
+            text: messageValue,
+            status: 'Queued',
+            date_submitted: new Date().toISOString(),
+            department: profile?.department || 'N/A',
+            programme: profile?.programme || 'N/A',
+            level: profile?.level || 'N/A',
+            session: profile?.session || 'N/A',
+            faculty: profile?.faculty || 'N/A',
+            admin_route: adminRoute
+          };
+
+          const newComplaintRef = push(ref(db, `complaints`));
+          const newComplaintStudentRef = ref(db, `complaints/${studentIdValue}/${newComplaintRef.key}`);
+          const complaintDataWithId = { ...complaintData, id: newComplaintRef.key };
+          
+          await set(newComplaintRef, complaintDataWithId);
+          await set(newComplaintStudentRef, complaintDataWithId);
+
+          await push(ref(db, `notifications/${currentUID}`), {
+            message: 'Complaint submitted',
+            created_at: new Date().toISOString(),
+            is_read: false
+          });
+
+          showToast('Complaint submitted successfully.', 'success');
+          setTimeout(closeModal, 700);
+        } catch (err) {
+          showToast('Error submitting complaint: ' + err.message, 'error');
+        } finally {
+          showSpinnerOnButton(submitBtn, false, orig);
+          updateNotificationCount();
+        }
+      });
+    });
+
+    /********************** CARD: Track Complaints **********************/
+    document.getElementById('trackComplaintsCard').addEventListener('click', () => {
+      if (!profile || !profile.studentId) {
+        showToast('Profile not loaded yet.', 'error');
+        return;
+      }
+
+      const modalHtml = `
+        <header>
+          <h2>Track Complaints</h2>
+          <button id="closeTrackComplaintsModal" class="close-btn">Close</button>
+        </header>
+        <div style="max-height:60vh; overflow:auto; padding-top:8px;">
+          <ul id="complaintsList"></ul>
+        </div>
+      `;
+      openModal(modalHtml);
+      document.getElementById('closeTrackComplaintsModal').addEventListener('click', closeModal);
+
+      const listEl = document.getElementById('complaintsList');
+      if (complaintsListenerRef) {
+        try {
+          off(complaintsListenerRef);
+        } catch (error) {
+          console.debug('Firebase listener cleanup completed for complaints tracking');
+        }
+      }
+      complaintsListenerRef = onValue(ref(db, `complaints/${profile.studentId}`), (snap) => {
+        listEl.innerHTML = '';
+        if (!snap.exists()) {
+          listEl.innerHTML = '<li class="item">No complaints submitted yet.</li>';
+          return;
+        }
+        const arr = Object.entries(snap.val()).map(([id, obj]) => ({ id, ...obj }));
+        arr.sort((a,b) => new Date(b.date_submitted) - new Date(a.date_submitted));
+        arr.forEach(c => {
+          const li = document.createElement('li');
+          li.className = 'item';
+          li.innerHTML = `
+            <div class="item-left">
+              <strong>${escapeHtml(c.subject || 'Complaint')}</strong> - ${escapeHtml(c.text)}
+              <div class="meta">${new Date(c.date_submitted).toLocaleString()}</div>
+            </div>
+            <div class="status-pill s-${c.status.replace(/\s/g,'')}" onclick="showProgressModal('complaint', '${c.id}', '${c.status}', '${escapeHtml(c.subject || c.text)}')" data-complaint-id="${c.id}">${c.status}</div>
+            <button class="delete-btn" data-id="${c.id}" style="margin-left:12px;background:#dc3545;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;">Delete</button>
+          `;
+          listEl.appendChild(li);
+        });
+
+        // Add event listeners to delete buttons
+        listEl.querySelectorAll('.delete-btn').forEach(button => {
+          button.addEventListener('click', async (e) => {
+            const id = e.target.dataset.id;
+            try {
+              await remove(ref(db, `complaints/${id}`));
+              await remove(ref(db, `complaints/${profile.studentId}/${id}`));
+              showToast('Complaint deleted.', 'success');
+            } catch (err) {
+              showToast('Failed to delete complaint: ' + err.message, 'error');
+            }
+          });
+        });
+      });
+    });
+
+    /********************** CARD: Track Results Issues **********************/
+    document.getElementById('trackResultsCard').addEventListener('click', () => {
+      if (!profile || !profile.studentId) {
+        showToast('Profile not loaded yet.', 'error');
+        return;
+      }
+
+      const modalHtml = `
+        <header>
+          <h2>Track Results Issues</h2>
+          <button id="closeTrackResultsModal" class="close-btn">Close</button>
+        </header>
+        <div style="max-height:60vh; overflow:auto; padding-top:8px;">
+          <ul id="resultsList"></ul>
+        </div>
+      `;
+      openModal(modalHtml);
+      document.getElementById('closeTrackResultsModal').addEventListener('click', closeModal);
+
+      refreshResultsListIfOpen();
+    });
+
+    function refreshResultsListIfOpen() {
+      if (!profile) return;
+      const listEl = document.getElementById('resultsList');
+      if (!listEl) return;
+      
+      if (resultsListenerRef) {
+        try {
+          off(resultsListenerRef);
+        } catch (error) {
+          console.debug('Firebase listener cleanup completed for results tracking');
+        }
+      }
+      resultsListenerRef = onValue(ref(db, `results_issues/${profile.studentId}`), (snap) => {
+        listEl.innerHTML = '';
+        if (!snap.exists()) {
+          listEl.innerHTML = '<li class="item">No results issues submitted yet.</li>';
+          return;
+        }
+        const arr = Object.entries(snap.val()).map(([id,obj]) => ({ id, ...obj }));
+        arr.sort((a,b) => new Date(b.date_submitted) - new Date(a.date_submitted));
+        arr.forEach(r => {
+          const li = document.createElement('li');
+          li.className = 'item';
+          li.innerHTML = `
+            <div class="item-left">
+              <strong>${escapeHtml(r.course_code || 'Course')}</strong> - ${escapeHtml(r.description)}
+              <div class="meta">${new Date(r.date_submitted).toLocaleString()}</div>
+            </div>
+            <div class="status-pill s-${r.status.replace(/\s/g,'')}" onclick="showProgressModal('result', '${r.id}', '${r.status}', '${escapeHtml(r.course_code || 'Result Issue')}')" data-result-id="${r.id}">${r.status}</div>
+            <button class="delete-btn" data-id="${r.id}" style="margin-left:12px;background:#dc3545;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;">Delete</button>
+          `;
+          listEl.appendChild(li);
+        });
+
+        listEl.querySelectorAll('.delete-btn').forEach(button => {
+          button.addEventListener('click', async (e) => {
+            const id = e.target.dataset.id;
+            try {
+              await remove(ref(db, `results_issues/${id}`));
+              await remove(ref(db, `results_issues/${profile.studentId}/${id}`));
+              showToast('Result issue deleted.', 'success');
+            } catch (err) {
+              showToast('Failed to delete result issue: ' + err.message, 'error');
+            }
+          });
+        });
+      });
+    }
+    
+    function escapeHtml(text) {
+      if (!text) return '';
+      return text.replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+    }
+
+    /********************** Progress Modal Functionality **********************/
+    async function showProgressModal(type, itemId, currentStatus, title) {
+      try {
+        const progressData = await getRealProgressData(type, itemId, currentStatus);
+        
+        const modalHtml = `
+          <header>
+            <h2>Progress Details</h2>
+            <button id="closeProgressModal" class="close-btn">Close</button>
+          </header>
+          <div style="padding: 8px 0;">
+            <div style="margin-bottom: 16px;">
+              <h3 style="margin: 0 0 8px 0; font-size: 1.1rem;">${escapeHtml(title)}</h3>
+              <div class="status-pill s-${currentStatus.replace(/\s/g,'')}" style="cursor: default;">${currentStatus}</div>
+            </div>
+            
+            <div class="progress-timeline">
+              ${progressData.map(item => `
+                <div class="timeline-item ${item.status}">
+                  <div class="timeline-dot ${item.status}"></div>
+                  <div class="timeline-content">
+                    <h4>${item.title}</h4>
+                    <p>${item.description}</p>
+                    ${item.timestamp ? `<div class="timestamp">${new Date(item.timestamp).toLocaleString()}</div>` : ''}
+                    ${item.adminNote ? `<div style="margin-top: 8px; padding: 8px; background: var(--bg-tertiary); border-radius: 4px; font-size: 0.8rem; color: var(--text-primary);"><strong>Admin Note:</strong> ${escapeHtml(item.adminNote)}</div>` : ''}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+            
+            <div style="margin-top: 20px; padding: 12px; background: var(--info-bg); border-radius: 8px; border-left: 4px solid var(--accent-primary);">
+              <p style="margin: 0; font-size: 0.9rem; color: var(--info-text);">
+                <strong>What's Next:</strong> ${getNextStepMessage(currentStatus, type)}
+              </p>
+            </div>
+          </div>
+        `;
+        
+        openModal(modalHtml);
+        document.getElementById('closeProgressModal').addEventListener('click', closeModal);
+      } catch (error) {
+        console.error('Error showing progress modal:', error);
+        showToast('Error loading progress details', 'error');
+      }
+    }
+
+    async function getRealProgressData(type, itemId, currentStatus) {
+      try {
+        // Get the actual item data from Firebase
+        const itemPath = type === 'complaint' ? 'complaints' : 'results_issues';
+        const itemRef = ref(db, `${itemPath}/${itemId}`);
+        const itemSnap = await get(itemRef);
+        
+        if (!itemSnap.exists()) {
+          console.warn(`Item not found: ${itemPath}/${itemId}`);
+          return generateFallbackProgressData(type, currentStatus);
+        }
+        
+        const itemData = itemSnap.val();
+        const adminLogs = itemData.admin_logs || [];
+        const dateSubmitted = itemData.date_submitted;
+        
+        return convertAdminLogsToTimeline(adminLogs, currentStatus, dateSubmitted, type);
+      } catch (error) {
+        console.error('Error fetching real progress data:', error);
+        return generateFallbackProgressData(type, currentStatus);
+      }
+    }
+
+    function convertAdminLogsToTimeline(adminLogs, currentStatus, dateSubmitted, type) {
+      const timeline = [];
+      
+      // Always add submission as first step
+      timeline.push({
+        title: type === 'complaint' ? 'Complaint Submitted' : 'Results Issue Reported',
+        description: type === 'complaint' ? 
+          'Your complaint has been successfully submitted and assigned a reference number.' :
+          'Your results issue has been submitted and is awaiting review.',
+        status: 'completed',
+        timestamp: dateSubmitted,
+        adminNote: 'Item received and logged in the system.'
+      });
+      
+      // Process admin logs to create timeline
+      const statusHistory = [];
+      adminLogs.forEach(log => {
+        if (typeof log === 'string') {
+          const timestampMatch = log.match(/at (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/);
+          const statusMatch = log.match(/changed status to (\w+)/);
+          const adminMatch = log.match(/^([^\\s]+)/);
+          
+          if (statusMatch) {
+            statusHistory.push({
+              status: statusMatch[1],
+              timestamp: timestampMatch ? timestampMatch[1] : null,
+              admin: adminMatch ? adminMatch[1] : 'Admin',
+              log: log
+            });
+          }
+        }
+      });
+      
+      // Add timeline items based on status history
+      const statusOrder = ['pending', 'Queued', 'in_progress', 'In Progress', 'resolved', 'Resolved', 'inactive'];
+      const processedStatuses = new Set(['submitted']);
+      
+      statusHistory.forEach(entry => {
+        const status = entry.status.toLowerCase().replace(/\s+/g, '_');
+        if (!processedStatuses.has(status)) {
+          let title, description;
+          
+          if (status === 'in_progress' || entry.status === 'In Progress') {
+            title = type === 'complaint' ? 'Investigation in Progress' : 'Correction in Progress';
+            description = type === 'complaint' ? 
+              'The relevant department is actively investigating your complaint.' :
+              'Necessary corrections are being made to your academic records.';
+          } else if (status === 'resolved' || entry.status === 'Resolved') {
+            title = type === 'complaint' ? 'Resolution Complete' : 'Results Updated';
+            description = type === 'complaint' ? 
+              'Your complaint has been resolved and appropriate actions have been taken.' :
+              'Your academic records have been updated and the issue is resolved.';
+          } else if (status === 'inactive') {
+            title = type === 'complaint' ? 'Complaint Moved to Inactive' : 'Issue Moved to Inactive';
+            description = 'This item has been moved to inactive status by an administrator.';
+          } else {
+            title = 'Status Updated';
+            description = `Status changed to ${entry.status}`;
+          }
+          
+          const itemStatus = getCurrentTimelineStatus(entry.status, currentStatus);
+          
+          timeline.push({
+            title: title,
+            description: description,
+            status: itemStatus,
+            timestamp: entry.timestamp,
+            adminNote: entry.log
+          });
+          
+          processedStatuses.add(status);
+        }
+      });
+      
+      // If no admin logs exist, add default steps based on current status
+      if (statusHistory.length === 0) {
+        return generateFallbackProgressData(type, currentStatus);
+      }
+      
+      return timeline;
+    }
+
+    function getCurrentTimelineStatus(logStatus, currentStatus) {
+      const normalizedLogStatus = logStatus.toLowerCase().replace(/\s+/g, '_');
+      const normalizedCurrentStatus = currentStatus.toLowerCase().replace(/\s+/g, '_');
+      
+      if (normalizedLogStatus === normalizedCurrentStatus) {
+        return 'current';
+      } else if (isStatusBefore(normalizedLogStatus, normalizedCurrentStatus)) {
+        return 'completed';
+      } else {
+        return 'pending';
+      }
+    }
+
+    function isStatusBefore(status1, status2) {
+      const statusOrder = ['pending', 'queued', 'in_progress', 'resolved', 'inactive'];
+      const index1 = statusOrder.indexOf(status1);
+      const index2 = statusOrder.indexOf(status2);
+      return index1 !== -1 && index2 !== -1 && index1 < index2;
+    }
+
+    function generateFallbackProgressData(type, currentStatus) {
+      const baseTimestamp = Date.now();
+      const dayMs = 24 * 60 * 60 * 1000;
+      
+      if (type === 'complaint') {
+        return [
+          {
+            title: 'Complaint Submitted',
+            description: 'Your complaint has been successfully submitted and assigned a reference number.',
+            status: 'completed',
+            timestamp: baseTimestamp - (3 * dayMs),
+            adminNote: 'Complaint received and logged in the system.'
+          },
+          {
+            title: 'Initial Review',
+            description: 'Admin team is reviewing your complaint and determining the appropriate department.',
+            status: currentStatus === 'Queued' ? 'current' : 'completed',
+            timestamp: currentStatus !== 'Queued' ? baseTimestamp - (2 * dayMs) : null,
+            adminNote: currentStatus !== 'Queued' ? 'Complaint categorized and assigned to relevant department.' : null
+          },
+          {
+            title: 'Investigation in Progress',
+            description: 'The relevant department is actively investigating your complaint.',
+            status: currentStatus === 'In Progress' ? 'current' : (currentStatus === 'Resolved' || currentStatus === 'inactive' ? 'completed' : 'pending'),
+            timestamp: currentStatus === 'In Progress' || currentStatus === 'Resolved' || currentStatus === 'inactive' ? baseTimestamp - dayMs : null,
+            adminNote: currentStatus === 'In Progress' ? 'Investigation team assigned and working on resolution.' : null
+          },
+          {
+            title: currentStatus === 'inactive' ? 'Complaint Moved to Inactive' : 'Resolution Complete',
+            description: currentStatus === 'inactive' ? 'Your complaint has been moved to inactive status by an administrator.' : 'Your complaint has been resolved and appropriate actions have been taken.',
+            status: (currentStatus === 'Resolved' || currentStatus === 'inactive') ? 'completed' : 'pending',
+            timestamp: (currentStatus === 'Resolved' || currentStatus === 'inactive') ? baseTimestamp : null,
+            adminNote: currentStatus === 'Resolved' ? 'Issue resolved. Follow-up communication sent to student.' : 
+                      currentStatus === 'inactive' ? 'Complaint moved to inactive status by admin.' : null
+          }
+        ];
+      } else {
+        return [
+          {
+            title: 'Results Issue Reported',
+            description: 'Your results issue has been submitted and is awaiting review.',
+            status: 'completed',
+            timestamp: baseTimestamp - (3 * dayMs),
+            adminNote: 'Results issue logged and assigned to academic records team.'
+          },
+          {
+            title: 'Academic Review',
+            description: 'Academic office is verifying your results and checking for discrepancies.',
+            status: currentStatus === 'Queued' ? 'current' : 'completed',
+            timestamp: currentStatus !== 'Queued' ? baseTimestamp - (2 * dayMs) : null,
+            adminNote: currentStatus !== 'Queued' ? 'Records verified with course lecturer and examination office.' : null
+          },
+          {
+            title: 'Correction in Progress',
+            description: 'Necessary corrections are being made to your academic records.',
+            status: currentStatus === 'In Progress' ? 'current' : (currentStatus === 'Resolved' || currentStatus === 'inactive' ? 'completed' : 'pending'),
+            timestamp: currentStatus === 'In Progress' || currentStatus === 'Resolved' || currentStatus === 'inactive' ? baseTimestamp - dayMs : null,
+            adminNote: currentStatus === 'In Progress' ? 'Corrections approved and being processed in the system.' : null
+          },
+          {
+            title: currentStatus === 'inactive' ? 'Issue Moved to Inactive' : 'Results Updated',
+            description: currentStatus === 'inactive' ? 'Your results issue has been moved to inactive status by an administrator.' : 'Your academic records have been updated and the issue is resolved.',
+            status: (currentStatus === 'Resolved' || currentStatus === 'inactive') ? 'completed' : 'pending',
+            timestamp: (currentStatus === 'Resolved' || currentStatus === 'inactive') ? baseTimestamp : null,
+            adminNote: currentStatus === 'Resolved' ? 'Updated results published. Student portal reflects changes.' : 
+                      currentStatus === 'inactive' ? 'Results issue moved to inactive status by admin.' : null
+          }
+        ];
+      }
+    }
+
+    function getNextStepMessage(status, type) {
+      if (type === 'complaint') {
+        switch (status) {
+          case 'Queued':
+          case 'pending':
+            return 'Your complaint is in the review queue. An admin will begin the initial review within 24-48 hours.';
+          case 'In Progress':
+          case 'in_progress':
+            return 'Investigation is underway. You may be contacted for additional information if needed.';
+          case 'Resolved':
+          case 'resolved':
+            return 'Your complaint has been resolved. If you have any follow-up questions, please submit a new complaint.';
+          case 'inactive':
+            return 'Your complaint has been moved to inactive status. If you believe this was done in error, please contact the administration.';
+          default:
+            return 'Please check back later for updates on your complaint status.';
+        }
+      } else {
+        switch (status) {
+          case 'Queued':
+          case 'pending':
+            return 'Your results issue is being reviewed by the academic office. This typically takes 2-3 business days.';
+          case 'In Progress':
+          case 'in_progress':
+            return 'Corrections are being processed. Updated results should be available within 1-2 business days.';
+          case 'Resolved':
+          case 'resolved':
+            return 'Your results have been updated. Please check your student portal to view the corrected information.';
+          case 'inactive':
+            return 'Your results issue has been moved to inactive status. If you believe this was done in error, please contact the administration.';
+          default:
+            return 'Please check back later for updates on your results issue.';
+        }
+      }
+    }
+
+    window.addEventListener('beforeunload', () => {
+      // Clear inactivity timer on page unload
+      if (inactivityTimeout) {
+        clearTimeout(inactivityTimeout);
+        inactivityTimeout = null;
+      }
+      // Sign out user
+      if (auth.currentUser) {
+        signOut(auth);
+      }
+    });
+
+    // Inactivity auto-logout (15 minutes of inactivity)
+    let inactivityTimeout;
+    const INACTIVITY_LIMIT = 15 * 60 * 1000;
+    
+    // Track when user was authenticated
+    window.dashboardAuthTime = null;
+
+    function resetInactivityTimer() {
+      // Clear existing timer
+      if (inactivityTimeout) {
+        clearTimeout(inactivityTimeout);
+        inactivityTimeout = null;
+      }
+      
+      // Only set timer if user is authenticated and profile is loaded
+      if (!auth.currentUser || !currentUID) {
+        console.log('[DASHBOARD] Skipping inactivity timer - user not authenticated');
+        return;
+      }
+      
+      // Additional check to ensure user has been authenticated for at least 3 seconds
+      if (!window.dashboardAuthTime || (Date.now() - window.dashboardAuthTime) < 3000) {
+        console.log('[DASHBOARD] Skipping inactivity timer - user recently authenticated');
+        return;
+      }
+      
+      console.log('[DASHBOARD] Starting inactivity timer for authenticated user');
+      inactivityTimeout = setTimeout(() => {
+        if (auth.currentUser && currentUID) {
+          console.log('[DASHBOARD] Inactivity timeout triggered - logging out user');
+          signOut(auth).then(() => {
+            showToast('Logged out due to inactivity.', 'info');
+            setTimeout(() => window.location.href = 'login.html', 700);
+          }).catch(err => {
+            console.error('Logout error:', err);
+            window.location.href = 'login.html';
+          });
+        }
+      }, INACTIVITY_LIMIT);
+    }
+    
+    // Authentication timestamp is now handled in the main onAuthStateChanged listener above
+
+    ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll'].forEach(evt =>
+      window.addEventListener(evt, () => {
+        // Only reset timer if user is authenticated and has been authenticated for at least 3 seconds
+        if (auth.currentUser && currentUID && window.dashboardAuthTime && 
+            (Date.now() - window.dashboardAuthTime) >= 3000) {
+          resetInactivityTimer();
+        }
+      })
+    );
+
+    // Timer will be started after successful authentication
+    // resetInactivityTimer(); // Removed - now starts after auth
+    
+    /********************** Real-time Status Updates **********************/
+    function setupRealTimeStatusUpdates() {
+      if (!currentUID || !profile?.studentId) {
+        console.log('[DASHBOARD] Skipping real-time status updates - missing UID or profile');
+        return;
+      }
+      
+      console.log('[DASHBOARD] Setting up real-time status updates for student:', profile.studentId);
+      
+      // Listen for complaint status changes from flat structure
+      const complaintsRef = ref(db, 'complaints');
+      onValue(complaintsRef, (snap) => {
+        if (snap.exists() && profile && profile.studentId) {
+          const allComplaints = snap.val();
+          Object.values(allComplaints).forEach(complaint => {
+            if (complaint && complaint.student_id === profile.studentId) {
+              updateLocalComplaintStatus(complaint.id, complaint.status, complaint.admin_logs);
+            }
+          });
+        }
+      });
+      
+      // Listen for result issue status changes from flat structure
+      const resultsRef = ref(db, 'results_issues');
+      onValue(resultsRef, (snap) => {
+        if (snap.exists() && profile && profile.studentId) {
+          const allResults = snap.val();
+          Object.values(allResults).forEach(result => {
+            if (result && result.student_id === profile.studentId) {
+              updateLocalResultStatus(result.id, result.status, result.admin_logs);
+            }
+          });
+        }
+      });
+    }
+
+    // Track processed status changes to prevent duplicates
+    let processedStatusChanges = new Set();
+
+    function updateLocalComplaintStatus(complaintId, newStatus, adminLogs) {
+      if (!complaintId || !newStatus || !currentUID) return;
+      
+      // Create unique key for this status change
+      const statusChangeKey = `complaint_${complaintId}_${newStatus}`;
+      
+      // Update UI if complaint tracking modal is open
+      const complaintsList = document.getElementById('complaintsList');
+      if (complaintsList) {
+        const statusPills = complaintsList.querySelectorAll(`[onclick*="${complaintId}"]`);
+        statusPills.forEach(pill => {
+          pill.textContent = newStatus;
+          pill.className = `status-pill s-${newStatus.replace(/\s/g,'')}`;
+        });
+      }
+      
+      // Only create notification if this exact status change hasn't been processed
+      if (!processedStatusChanges.has(statusChangeKey) && adminLogs && adminLogs.length > 0) {
+        const latestLog = adminLogs[adminLogs.length - 1];
+        if (shouldNotifyStatusChange(latestLog)) {
+          // Mark this status change as processed
+          processedStatusChanges.add(statusChangeKey);
+          
+          // Add to notifications
+          push(ref(db, `notifications/${currentUID}`), {
+            message: `Your complaint status has been updated to: ${newStatus}`,
+            created_at: new Date().toISOString(),
+            is_read: false,
+            type: 'status_update',
+            item_id: complaintId,
+            status_change_key: statusChangeKey
+          });
+        }
+      }
+    }
+
+    function updateLocalResultStatus(resultId, newStatus, adminLogs) {
+      if (!resultId || !newStatus || !currentUID) return;
+      
+      // Create unique key for this status change
+      const statusChangeKey = `result_${resultId}_${newStatus}`;
+      
+      // Update UI if results tracking modal is open
+      const resultsList = document.getElementById('resultsList');
+      if (resultsList) {
+        const statusPills = resultsList.querySelectorAll(`[onclick*="${resultId}"]`);
+        statusPills.forEach(pill => {
+          pill.textContent = newStatus;
+          pill.className = `status-pill s-${newStatus.replace(/\s/g,'')}`;
+        });
+      }
+      
+      // Only create notification if this exact status change hasn't been processed
+      if (!processedStatusChanges.has(statusChangeKey) && adminLogs && adminLogs.length > 0) {
+        const latestLog = adminLogs[adminLogs.length - 1];
+        if (shouldNotifyStatusChange(latestLog)) {
+          // Mark this status change as processed
+          processedStatusChanges.add(statusChangeKey);
+          
+          // Add to notifications
+          push(ref(db, `notifications/${currentUID}`), {
+            message: `Your results issue status has been updated to: ${newStatus}`,
+            created_at: new Date().toISOString(),
+            is_read: false,
+            type: 'status_update',
+            item_id: resultId,
+            status_change_key: statusChangeKey
+          });
+        }
+      }
+    }
+
+    function shouldNotifyStatusChange(logEntry) {
+      if (!logEntry || typeof logEntry !== 'string') return false;
+      
+      // Check if this is a recent status change (within last 5 minutes)
+      const timestampMatch = logEntry.match(/at (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/);
+      if (timestampMatch) {
+        const logTime = new Date(timestampMatch[1]);
+        const now = new Date();
+        const diffMinutes = (now - logTime) / (1000 * 60);
+        return diffMinutes <= 5; // Only notify for changes within last 5 minutes
+      }
+      
+      return false;
+    }
+
+    /********************** Enhanced Notification System **********************/
+    // Track which notifications have been shown as toasts to prevent duplicates
+    let shownNotificationToasts = new Set();
+    
+    function setupEnhancedNotifications() {
+      if (!currentUID) return;
+      
+      // Enhanced notification listener that includes admin action details
+      const notificationsRef = ref(db, `notifications/${currentUID}`);
+      onValue(notificationsRef, (snap) => {
+        if (snap.exists()) {
+          const notifications = snap.val();
+          
+          // Filter out duplicate notifications based on content and recent timestamp
+          const uniqueNotifications = filterDuplicateNotifications(notifications);
+          const unreadCount = Object.values(uniqueNotifications).filter(n => !n.is_read).length;
+          
+          // Update notification count and trigger bell shake for new notifications
+          if (unreadCount > 0) {
+            notificationCount.textContent = unreadCount;
+            notificationCount.style.display = 'flex';
+            notificationBell.classList.add('bell-active');
+            
+            // Check if this is a new notification count increase
+            const previousCount = parseInt(notificationBell.dataset.previousCount || '0');
+            if (unreadCount > previousCount) {
+              // Only shake if user has been authenticated for more than 5 seconds (avoid shake on initial load)
+              if (window.dashboardAuthTime && (Date.now() - window.dashboardAuthTime) > 5000) {
+                triggerBellShake();
+              }
+            }
+            notificationBell.dataset.previousCount = unreadCount.toString();
+          } else {
+            notificationCount.style.display = 'none';
+            notificationBell.classList.remove('bell-active');
+            notificationBell.dataset.previousCount = '0';
+          }
+          
+          // Shake bell for new notifications instead of showing toast popups
+          Object.entries(uniqueNotifications).forEach(([notificationId, notification]) => {
+            if (!notification.is_read && notification.type === 'status_update') {
+              // Check if we've already shown this notification as a bell shake
+              if (!shownNotificationToasts.has(notificationId)) {
+                const notificationTime = new Date(notification.created_at);
+                const now = new Date();
+                const diffSeconds = (now - notificationTime) / 1000;
+                
+                // Shake bell only for recent notifications (within 2 minutes) that we haven't shown before
+                if (diffSeconds <= 120) {
+                  triggerBellShake();
+                  // Mark this notification as shown
+                  shownNotificationToasts.add(notificationId);
+                }
+              }
+            }
+          });
+        }
+      });
+    }
+
+    /********************** Notification Deduplication Helper **********************/
+    function filterDuplicateNotifications(notifications) {
+      if (!notifications) return {};
+      
+      const notificationArray = Object.entries(notifications).map(([id, notification]) => ({
+        id,
+        ...notification
+      }));
+      
+      // Group notifications by message content and item_id
+      const grouped = {};
+      notificationArray.forEach(notification => {
+        const key = `${notification.message}_${notification.item_id || 'no_item'}`;
+        if (!grouped[key]) {
+          grouped[key] = [];
+        }
+        grouped[key].push(notification);
+      });
+      
+      // Keep only the most recent notification from each group
+      const uniqueNotifications = {};
+      Object.values(grouped).forEach(group => {
+        // Sort by created_at timestamp and keep the most recent
+        const sorted = group.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        const mostRecent = sorted[0];
+        uniqueNotifications[mostRecent.id] = mostRecent;
+      });
+      
+      return uniqueNotifications;
+    }
+
+    /********************** Bell Shake Animation Function **********************/
+    function triggerBellShake() {
+      const bell = document.getElementById('notificationBell');
+      if (!bell) return;
+      
+      // Remove existing animation classes
+      bell.classList.remove('bell-shake', 'bell-new-notification');
+      
+      // Force reflow to ensure class removal takes effect
+      bell.offsetHeight;
+      
+      // Add shake animation class
+      bell.classList.add('bell-new-notification');
+      
+      // Remove animation class after animation completes
+      setTimeout(() => {
+        bell.classList.remove('bell-new-notification');
+      }, 600); // Match animation duration
+    }
+
+    /********************** Dark Mode Toggle Functionality **********************/
+    function initializeTheme() {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      updateThemeIcon(savedTheme);
+    }
+
+    function toggleTheme() {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      
+      document.documentElement.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+      updateThemeIcon(newTheme);
+    }
+
+    function updateThemeIcon(theme) {
+      const themeIcon = document.getElementById('themeIcon');
+      if (theme === 'dark') {
+        // Moon icon for dark mode
+        themeIcon.innerHTML = '<path d="M9.528 1.718a.75.75 0 0 1 .162.819A8.97 8.97 0 0 0 9 6a9 9 0 0 0 9 9 8.97 8.97 0 0 0 3.463-.69.75.75 0 0 1 .981.98 10.503 10.503 0 0 1-9.694 6.46c-5.799 0-10.5-4.7-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 0 1 .818.162Z" />';
+      } else {
+        // Sun icon for light mode
+        themeIcon.innerHTML = '<path d="M12 2.25a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-1.5 0V3a.75.75 0 0 1 .75-.75ZM7.5 12a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM18.894 6.166a.75.75 0 0 0-1.06-1.06l-1.591 1.59a.75.75 0 1 0 1.06 1.061l1.591-1.59ZM21.75 12a.75.75 0 0 1-.75.75h-2.25a.75.75 0 0 1 0-1.5H21a.75.75 0 0 1 .75.75ZM17.834 18.894a.75.75 0 0 0 1.06-1.06l-1.59-1.591a.75.75 0 1 0-1.061 1.06l1.59 1.591ZM12 18a.75.75 0 0 1 .75.75V21a.75.75 0 0 1-1.5 0v-2.25A.75.75 0 0 1 12 18ZM7.758 17.303a.75.75 0 0 0-1.061-1.06l-1.591 1.59a.75.75 0 0 0 1.06 1.061l1.591-1.59ZM6 12a.75.75 0 0 1-.75.75H3a.75.75 0 0 1 0-1.5h2.25A.75.75 0 0 1 6 12ZM6.697 7.757a.75.75 0 0 0 1.06-1.06l-1.59-1.591a.75.75 0 0 0-1.061 1.06l1.59 1.591Z" />';
+      }
+    }
+
+    // Initialize theme on page load
+    initializeTheme();
+
+    // Add event listener for theme toggle
+    document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+    // Expose functions to global scope for HTML onclick attributes
+    window.showProgressModal = showProgressModal;
+    window.escapeHtml = escapeHtml;
+    window.triggerBellShake = triggerBellShake;
+  </script>
+</body>
+</html>

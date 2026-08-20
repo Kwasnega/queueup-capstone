@@ -1,0 +1,20 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "functions": {
+    "api/**/*.ts": {
+      "runtime": "nodejs20.x"
+    }
+  },
+  "rewrites": [
+    { "source": "/login", "destination": "/login.html" },
+    { "source": "/dashboard", "destination": "/dashboard.html" },
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/admin_dashboard", "destination": "/admin_dashboard.html" },
+    { "source": "/signup", "destination": "/signup.html" },
+    { "source": "/change-password", "destination": "/change-password.html" }
+  ],
+  "redirects": [
+    { "source": "/", "destination": "/login.html", "permanent": true }
+  ]
+}
