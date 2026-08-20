@@ -575,7 +575,6 @@
       setDarkMode(false);
     }
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getAuth, signOut, onAuthStateChanged, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
     import { getDatabase, ref, onValue, get, update } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
     // ---------- CONFIG ----------
@@ -589,8 +588,8 @@
       appId: "1:647901471109:web:2607f4883cd1393259e4ec"
     };
     const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
     const db = getDatabase(app);
+  const API_BASE_URL = "http://localhost:5000";
 
     // ---------- UI refs ----------
     const tabs = document.querySelectorAll('.nav-tab');
@@ -651,65 +650,68 @@
     let currentAdminRole = null; // Store current admin's role for filtering
 
     // ---------- Auth & init ----------
-    onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        console.warn('[ADMIN DEBUG] No user found, redirecting to admin.html');
+    async function loadAdminProfile() {
+      const token = localStorage.getItem('adminAuthToken');
+      if (!token) {
         window.location.href = 'admin.html';
         return;
       }
-      console.log('[ADMIN DEBUG] Logged in user:', user.uid);
-      
-      // Check admin status and role
-      get(ref(db, `admins/${user.uid}`)).then(snap => {
-        console.log('[ADMIN DEBUG] Admin data:', snap.exists() ? snap.val() : 'No data');
-        if (!snap.exists() || snap.val().isAdmin !== true) {
-          console.warn('[ADMIN DEBUG] Not admin or isAdmin not true, signing out in 5 seconds.');
-          setTimeout(() => {
-            signOut(auth);
-            window.location.href = 'admin.html';
-          }, 5000);
-        } else {
-          const adminData = snap.val();
-          console.log('[ADMIN DEBUG] Admin check passed, role:', adminData.role);
-          
-          // Store current admin role for complaint filtering
-          currentAdminRole = adminData.role;
-          
-          // Update navbar title to show admin role
-          const adminTitleElement = document.getElementById('admin-title');
-          if (adminTitleElement && adminData.role) {
-            adminTitleElement.textContent = `QUEUEUP Admin (${adminData.role})`;
-          }
-          
-          // Show admin management tab and export button only for SuperAdmin
-          if (adminData.role === 'SuperAdmin') {
-            document.getElementById('admin-management-tab').style.display = 'block';
-            document.getElementById('export-btn').style.display = 'block';
-          }
-          
-          initDashboard();
-          initUserManagement();
-          initComplaints();
-          initInactiveComplaints();
-          initResultIssues();
-          if (adminData.role === 'SuperAdmin') {
-            initAdminManagement();
-          }
-          // Initialize charts only once after admin check passes
-          initCharts();
-        }
-      }).catch(err => {
-        console.error('[ADMIN DEBUG] admin check error', err, 'Signing out in 5 seconds.');
-        setTimeout(() => {
-          signOut(auth);
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/admins/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (response.status === 401) {
+          localStorage.removeItem('adminAuthToken');
+          localStorage.removeItem('adminProfile');
           window.location.href = 'admin.html';
-        }, 5000);
-      });
-    });
+          return;
+        }
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.message || 'Unable to load admin profile');
+        }
+
+        const adminData = data.admin;
+        currentAdminRole = adminData.role;
+        localStorage.setItem('adminProfile', JSON.stringify(adminData));
+
+        const adminTitleElement = document.getElementById('admin-title');
+        if (adminTitleElement && adminData.role) {
+          adminTitleElement.textContent = `QUEUEUP Admin (${adminData.role})`;
+        }
+
+        if (adminData.role === 'SuperAdmin') {
+          document.getElementById('admin-management-tab').style.display = 'block';
+          document.getElementById('export-btn').style.display = 'block';
+        }
+
+        initDashboard();
+        initUserManagement();
+        initComplaints();
+        initInactiveComplaints();
+        initResultIssues();
+        if (adminData.role === 'SuperAdmin') {
+          initAdminManagement();
+        }
+        initCharts();
+      } catch (error) {
+        console.error('[ADMIN DEBUG] Admin profile lookup failed:', error);
+        localStorage.removeItem('adminAuthToken');
+        localStorage.removeItem('adminProfile');
+        window.location.href = 'admin.html';
+      }
+    }
+
+    loadAdminProfile();
 
     // Logout
     logoutBtn.addEventListener('click', () => {
-      signOut(auth).then(() => window.location.href = 'admin.html').catch(console.error);
+      localStorage.removeItem('adminAuthToken');
+      localStorage.removeItem('adminProfile');
+      window.location.href = 'admin.html';
     });
 
     // Excel Export functionality
