@@ -294,23 +294,7 @@
   </footer>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyDIqR0b9hA9IaLhRsVtJKSSwh9NktuIIjI",
-      authDomain: "queueup-85662.firebaseapp.com",
-      databaseURL: "https://queueup-85662-default-rtdb.firebaseio.com",
-      projectId: "queueup-85662",
-      storageBucket: "queueup-85662.firebasestorage.app",
-      messagingSenderId: "647901471109",
-      appId: "1:647901471109:web:2607f4883cd1393259e4ec"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
+    const API_BASE_URL = "http://localhost:5000";
 
     const form = document.getElementById("adminLoginForm");
     const errorEl = document.getElementById("error");
@@ -327,29 +311,22 @@
       loginBtn.classList.add('loading');
 
       try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
+        const response = await fetch(`${API_BASE_URL}/api/auth/admin/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await response.json();
 
-        const dbRef = ref(db);
-        const adminSnapshot = await get(child(dbRef, `admins/${user.uid}/isAdmin`));
-
-        if (adminSnapshot.exists() && adminSnapshot.val() === true) {
-          window.location.href = "admin_dashboard.html";
-        } else {
-          errorEl.textContent = "You do not have administrative access.";
-          signOut(auth);
+        if (!response.ok) {
+          throw new Error(data.message || "Unable to log in.");
         }
+
+        localStorage.setItem("adminAuthToken", data.token);
+        localStorage.setItem("adminProfile", JSON.stringify(data.admin));
+        window.location.href = "admin_dashboard.html";
       } catch (err) {
-        let errorMessage = "An unknown error occurred.";
-        switch (err.code) {
-          case 'auth/wrong-password':
-          case 'auth/user-not-found':
-          case 'auth/invalid-credential':
-            errorMessage = 'Incorrect email or password.'; break;
-          case 'auth/network-request-failed':
-            errorMessage = 'Network error. Please check your internet connection.'; break;
-        }
-        errorEl.textContent = errorMessage;
+        errorEl.textContent = err.message || "An unknown error occurred.";
       } finally {
         loginBtn.innerHTML = originalBtnText;
         loginBtn.classList.remove('loading');
