@@ -575,7 +575,7 @@
       setDarkMode(false);
     }
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getDatabase, ref, onValue, get, update } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+    import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
     // ---------- CONFIG ----------
     const firebaseConfig = {
@@ -760,28 +760,7 @@ function initDashboard() {
     const unresolvedResults = allResultIssuesData.filter(c => c.status === 'Queued' || c.status === 'in_progress').length;
     queueNowEl.textContent = unresolvedComplaints + unresolvedResults;
 
-  // Complaints - Filter by admin role
-  onValue(ref(db, 'complaints'), (snap) => {
-    const complaints = snap.val() || {};
-    allComplaintsData = Object.entries(complaints).map(([id, v]) => ({ id, ...v }));
-    
-    // Filter complaints based on admin role for dashboard metrics
-    const roleFilteredComplaints = allComplaintsData.filter(c => canAdminViewComplaint(c, currentAdminRole));
-    const pendingCount = roleFilteredComplaints.filter(c => c.status === 'pending' || c.status === 'Queued').length;
-    
-    pendingComplaintsEl.textContent = pendingCount;
-    complaintsCountEl.textContent = `(${roleFilteredComplaints.length})`;
-    
-    // Update role info display
-    const roleInfoEl = document.getElementById('complaints-role-info');
-    if (roleInfoEl) {
-      if (currentAdminRole === 'SuperAdmin') {
-        roleInfoEl.textContent = 'All complaints (SuperAdmin)';
-      } else {
-        roleInfoEl.textContent = `For ${currentAdminRole} role`;
-      }
-    }
-  });
+  // Complaint metrics are refreshed by initComplaints backend polling.
 
   // Completed Queue
   onValue(ref(db, 'completed_queue'), (snap) => {
@@ -790,14 +769,7 @@ function initDashboard() {
   completedQueuesEl.textContent = Object.keys(completed).length;
   });
 
-  // Result Issues - FIXED: Use same path as student dashboard
-  onValue(ref(db, 'results_issues'), (snap) => {
-    const res = snap.val() || {};
-    allResultIssuesData = Object.entries(res).map(([id, v]) => ({ id, ...v }));
-    const unresolvedCount = allResultIssuesData.filter(c => c.status === 'Queued' || c.status === 'in_progress').length;
-    unresolvedResultIssuesEl.textContent = unresolvedCount;
-    resultCountEl.textContent = `(${allResultIssuesData.length})`;
-  });
+  // Result issue metrics are refreshed by initResultIssues backend polling.
 
   // No more queue or complaint charts
   setupRealtimeActivityLog();
@@ -841,53 +813,7 @@ function initDashboard() {
     function setupRealtimeActivityLog(){
       let isInitialLoad = true;
       
-      // Log new complaints
-      onValue(ref(db,'complaints'), (snap) => {
-        const obj = snap.val() || {};
-        const arr = Object.entries(obj).map(([id, v]) => ({ id, ...v }));
-        
-        if (!isInitialLoad) {
-          const oldIds = allComplaintsData.map(x => x.id);
-          arr.forEach(item => { 
-            if (!oldIds.includes(item.id)) {
-              addLog(`📝 New complaint submitted: "${item.subject || item.description || 'Untitled'}" by ${item.student_id || 'Unknown'}`); 
-            }
-          });
-        }
-        allComplaintsData = arr;
-      });
-
-      // Log new result issues
-      onValue(ref(db, 'results_issues'), (snap) => {
-        const obj = snap.val() || {};
-        const arr = Object.entries(obj).map(([id, v]) => ({ id, ...v }));
-        
-        if (!isInitialLoad) {
-          const oldIds = allResultIssuesData.map(x => x.id);
-          arr.forEach(item => { 
-            if (!oldIds.includes(item.id)) {
-              addLog(`📊 New result issue reported: "${item.course_code || 'Unknown Course'}" by ${item.student_id || 'Unknown'}`); 
-            }
-          });
-        }
-        allResultIssuesData = arr;
-      });
-
-      // Log new user registrations
-      onValue(ref(db, 'users'), (snap) => {
-        const users = snap.val() || {};
-        const arr = Object.entries(users).map(([uid, v]) => ({ uid, ...v }));
-        
-        if (!isInitialLoad) {
-          const oldIds = allUsersData.map(x => x.uid);
-          arr.forEach(user => { 
-            if (!oldIds.includes(user.uid)) {
-              addLog(`👤 New user registered: ${user.name || user.full_name || 'Unknown'} (${user.studentId || user.studentID || 'No ID'})`); 
-            }
-          });
-        }
-        allUsersData = arr;
-      });
+      // Complaint and result activity is refreshed by backend polling flows.
 
       // Add some initial activity logs to show the system is working
       setTimeout(() => {
@@ -904,14 +830,24 @@ function initDashboard() {
 
     // ---------- User management ----------
     function initUserManagement(){
-      onValue(ref(db,'users'), (snap)=> {
-        const users = snap.val() || {};
-        const allUsers = Object.entries(users).map(([uid, v]) => ({ uid, ...v }));
-        
-        // Simple user processing without verification logic
-        allUsersData = allUsers;
-        console.log('[ADMIN DEBUG] User management - Total users:', allUsersData.length);
+      fetch(`${API_BASE_URL}/api/students`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('adminAuthToken')}` }
+      }).then(async response => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Unable to load students.');
+
+        allUsersData = (data.students || []).map(student => ({
+          ...student,
+          name: student.full_name,
+          studentId: student.student_id,
+          role: 'Student',
+          timestamp: student.created_at
+        }));
+        console.log('[ADMIN DEBUG] User management - Total students:', allUsersData.length);
         renderUsers(allUsersData);
+      }).catch(error => {
+        console.error('Error loading students:', error);
+        showToast('Error loading students', 'error');
       });
       userSearchInput.addEventListener('input', ()=> renderUsers(allUsersData));
       
@@ -964,13 +900,28 @@ function initDashboard() {
     }
 
    // ---------- Complaints management ----------
-function initComplaints(){
-  onValue(ref(db,'complaints'), (snap) => {
-    const obj = snap.val() || {};
-    // complaints are already flat
-    allComplaintsData = Object.entries(obj).map(([id, v]) => ({ id, ...v }));
-    renderComplaints(allComplaintsData);
+async function fetchAdminComplaints() {
+  const response = await fetch(`${API_BASE_URL}/api/complaints`, {
+    headers: { Authorization: `Bearer ${localStorage.getItem('adminAuthToken')}` }
   });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Unable to load complaints.');
+  allComplaintsData = data.complaints || [];
+  return allComplaintsData;
+}
+
+async function refreshComplaintViews() {
+  await fetchAdminComplaints();
+  renderComplaints(allComplaintsData);
+  renderInactiveComplaints(allComplaintsData);
+}
+
+function initComplaints(){
+  fetchAdminComplaints().then(() => renderComplaints(allComplaintsData)).catch(error => {
+    console.error('Error loading complaints:', error);
+    showToast('Error loading complaints', 'error');
+  });
+  setInterval(() => fetchAdminComplaints().then(() => renderComplaints(allComplaintsData)).catch(console.error), 30000);
   complaintsSearchInput.addEventListener('input', ()=> renderComplaints(allComplaintsData));
   complaintsFilterSelect.addEventListener('change', ()=> renderComplaints(allComplaintsData));
 }
@@ -1140,135 +1091,24 @@ function setComplaintStatus(complaintId, studentId, newStatus) {
     return;
   }
   
-  // Get current user info
-  const currentUser = auth.currentUser;
-  const adminName = currentUser ? currentUser.email.split('@')[0] : 'Unknown Admin';
-  const timestamp = new Date().toISOString();
-  
-  // Add admin log entry
-  const logEntry = `${adminName} changed status to ${newStatus} at ${timestamp}`;
-  
-  // Get current complaint data first to preserve existing admin_logs
-  get(ref(db, `complaints/${complaintId}`)).then(snap => {
-    if (snap.exists()) {
-      const currentData = snap.val();
-      const existingLogs = currentData.admin_logs || [];
-      
-      // Update flat path
-      const updates = {
-        status: newStatus,
-        admin_logs: [...existingLogs, logEntry],
-        updated_at: timestamp
-      };
-      
-      // If marking as inactive, add inactive timestamp
-      if (newStatus === 'inactive') {
-        updates.inactive_date = timestamp;
-      }
-      
-      update(ref(db, `complaints/${complaintId}`), updates).then(() => {
-        const statusMessage = newStatus === 'inactive' ? 'Complaint moved to inactive' : `Complaint status updated to ${newStatus}`;
-        showToast(statusMessage, 'success');
-        
-        // Log the activity
-        const complaintTitle = currentData.subject || currentData.description || 'Untitled';
-        addLog(`⚡ Complaint "${complaintTitle}" status changed to ${newStatus} by ${adminName}`);
-        
-      }).catch(err => {
-        console.error('Error updating complaint:', err);
-        showToast('Error updating complaint status', 'error');
-      });
-      
-      // Update per-student path to reflect status change
-      if (studentId && studentId !== 'Unknown') {
-        // Update student's complaint tracking
-        updateStudentComplaintStatus(studentId, complaintId, newStatus, timestamp);
-      }
-    } else {
-      console.error('Complaint not found:', complaintId);
-      showToast('Error: Complaint not found', 'error');
-    }
-  }).catch(err => {
-    console.error('Error fetching complaint:', err);
-    showToast('Error fetching complaint data', 'error');
+  fetch(`${API_BASE_URL}/api/complaints/${complaintId}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('adminAuthToken')}` },
+    body: JSON.stringify({ status: newStatus })
+  }).then(async response => {
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Unable to update complaint status.');
+    showToast(newStatus === 'inactive' ? 'Complaint moved to inactive' : `Complaint status updated to ${newStatus}`, 'success');
+    await refreshComplaintViews();
+  }).catch(error => {
+    console.error('Error updating complaint:', error);
+    showToast('Error updating complaint status: ' + error.message, 'error');
   });
 }
 
 // Function to update student's complaint tracking
-function updateStudentComplaintStatus(studentId, complaintId, newStatus, timestamp) {
-  // Update in student's complaints path
-  get(ref(db, `complaints/${studentId}`)).then(snap => {
-    if (snap.exists()) {
-      Object.entries(snap.val()).forEach(([pushId, obj]) => {
-        if (obj && obj.id === complaintId) {
-          const updates = {
-            status: newStatus,
-            updated_at: timestamp
-          };
-          if (newStatus === 'inactive') {
-            updates.inactive_date = timestamp;
-          }
-          update(ref(db, `complaints/${studentId}/${pushId}`), updates);
-        }
-      });
-    }
-  });
-  
-  // Also update in student's tracking/status path if it exists
-  const trackingPath = `student_tracking/${studentId}/complaints/${complaintId}`;
-  update(ref(db, trackingPath), {
-    status: newStatus,
-    updated_at: timestamp,
-    ...(newStatus === 'inactive' && { inactive_date: timestamp })
-  }).catch(err => {
-    console.log('Student tracking path may not exist, which is normal:', err.message);
-  });
-}
-
 function deleteComplaint(complaintId, studentId) {
-  // Mark as inactive instead of deleted and add deletion log
-  const currentUser = auth.currentUser;
-  const adminName = currentUser ? currentUser.email.split('@')[0] : 'Unknown Admin';
-  const timestamp = new Date().toISOString();
-  
-  // Get current complaint data first to preserve existing admin_logs
-  get(ref(db, `complaints/${complaintId}`)).then(snap => {
-    if (snap.exists()) {
-      const currentData = snap.val();
-      const existingLogs = currentData.admin_logs || [];
-      
-      // Add deletion log entry
-      const deletionLogEntry = `${adminName} moved complaint to inactive (deleted) at ${timestamp}`;
-      
-      // Update with inactive status and deletion log
-      const updates = {
-        status: 'inactive',
-        admin_logs: [...existingLogs, deletionLogEntry],
-        inactive_date: timestamp,
-        updated_at: timestamp
-      };
-      
-      update(ref(db, `complaints/${complaintId}`), updates).then(() => {
-        showToast('Complaint moved to inactive', 'success');
-        
-        // Log the activity
-        const complaintTitle = currentData.subject || currentData.description || 'Untitled';
-        addLog(`🗑️ Complaint "${complaintTitle}" moved to inactive by ${adminName}`);
-        
-      }).catch(err => {
-        console.error('Error updating complaint:', err);
-        showToast('Error moving complaint to inactive', 'error');
-      });
-      
-      // Update per-student path
-      if (studentId && studentId !== 'Unknown') {
-        updateStudentComplaintStatus(studentId, complaintId, 'inactive', timestamp);
-      }
-    }
-  }).catch(err => {
-    console.error('Error fetching complaint for deletion:', err);
-    showToast('Error processing complaint deletion', 'error');
-  });
+  setComplaintStatus(complaintId, studentId, 'inactive');
 }
 
 function showComplaintDetails(complaint) {
@@ -1350,25 +1190,23 @@ function updateComplaintStatus(complaintId) {
 
     // ---------- Inactive Complaints management ----------
 function initInactiveComplaints(){
-  // Load inactive complaints and result issues
-  onValue(ref(db, 'complaints'), (snap) => {
-    const obj = snap.val() || {};
-    const complaints = Object.entries(obj).map(([id, v]) => ({ id, ...v }));
-    renderInactiveComplaints(complaints);
-  });
-  
-  // Also listen to result issues for inactive items - FIXED: Use same path as student dashboard
-  onValue(ref(db, 'results_issues'), (snap) => {
-    const obj = snap.val() || {};
-    const resultIssues = Object.entries(obj).map(([id, v]) => ({ id, ...v }));
-    // Update allResultIssuesData for inactive rendering
-    allResultIssuesData = resultIssues;
-    // Re-render inactive items if tab is active
-    const inactiveTab = document.querySelector('.nav-tab[data-tab="inactive_complaints"]');
-    if (inactiveTab && inactiveTab.classList.contains('active')) {
+  const loadInactiveData = async () => {
+    try {
+      await fetchAdminComplaints();
+      const response = await fetch(`${API_BASE_URL}/api/results-issues`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('adminAuthToken')}` }
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Unable to load results issues.');
+      allResultIssuesData = data.resultsIssues || [];
       renderInactiveComplaints(allComplaintsData);
+    } catch (error) {
+      console.error('Error loading inactive items:', error);
+      showToast('Error loading inactive items', 'error');
     }
-  });
+  };
+  loadInactiveData();
+  setInterval(loadInactiveData, 30000);
 }
 
 function renderInactiveComplaints(complaints = []) {
@@ -1448,31 +1286,18 @@ function permanentlyDeleteComplaint(complaintId, studentId) {
     return;
   }
   
-  // Remove from flat path
-  update(ref(db), {
-    [`complaints/${complaintId}`]: null
-  }).then(() => {
+  fetch(`${API_BASE_URL}/api/complaints/${complaintId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${localStorage.getItem('adminAuthToken')}` }
+  }).then(async response => {
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Unable to delete complaint.');
     showToast('Complaint permanently deleted', 'success');
-  }).catch(err => {
-    console.error('Error deleting complaint:', err);
-    showToast('Error deleting complaint', 'error');
+    await refreshComplaintViews();
+  }).catch(error => {
+    console.error('Error deleting complaint:', error);
+    showToast('Error deleting complaint: ' + error.message, 'error');
   });
-  
-  // Remove from per-student path
-  if (studentId && studentId !== 'Unknown') {
-    get(ref(db, `complaints/${studentId}`)).then(snap => {
-      if (snap.exists()) {
-        Object.entries(snap.val()).forEach(([pushId, obj]) => {
-          if (obj && obj.id === complaintId) {
-            update(ref(db), { [`complaints/${studentId}/${pushId}`]: null });
-          }
-        });
-      }
-    });
-    
-    // Remove from student tracking
-    update(ref(db), { [`student_tracking/${studentId}/complaints/${complaintId}`]: null });
-  }
 }
 
 function permanentlyDeleteResultIssue(issueId, studentId) {
@@ -1480,42 +1305,39 @@ function permanentlyDeleteResultIssue(issueId, studentId) {
     return;
   }
   
-  // Remove from flat path - FIXED: Use same path as student dashboard
-  update(ref(db), {
-    [`results_issues/${issueId}`]: null
-  }).then(() => {
+  fetch(`${API_BASE_URL}/api/results-issues/${issueId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${localStorage.getItem('adminAuthToken')}` }
+  }).then(async response => {
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Unable to delete results issue.');
     showToast('Result issue permanently deleted', 'success');
-  }).catch(err => {
-    console.error('Error deleting result issue:', err);
-    showToast('Error deleting result issue', 'error');
+    await refreshComplaintViews();
+  }).catch(error => {
+    console.error('Error deleting result issue:', error);
+    showToast('Error deleting result issue: ' + error.message, 'error');
   });
-  
-  // Remove from per-student path
-  if (studentId && studentId !== 'Unknown') {
-    get(ref(db, `results_issues/${studentId}`)).then(snap => {
-      if (snap.exists()) {
-        Object.entries(snap.val()).forEach(([pushId, obj]) => {
-          if (obj && obj.id === issueId) {
-            update(ref(db), { [`results_issues/${studentId}/${pushId}`]: null });
-          }
-        });
-      }
-    });
-    
-    // Remove from student tracking
-    update(ref(db), { [`student_tracking/${studentId}/result_issues/${issueId}`]: null });
-  }
 }
 
 
     // ---------- Result Issues management ----------
 function initResultIssues(){
-  onValue(ref(db, 'results_issues'), (snap) => {
-    const obj = snap.val() || {};
-    // already flat
-    allResultIssuesData = Object.entries(obj).map(([id, v]) => ({ id, ...v }));
-    renderResultIssues(allResultIssuesData);
-  });
+  const loadResults = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/results-issues`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('adminAuthToken')}` }
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Unable to load results issues.');
+      allResultIssuesData = data.resultsIssues || [];
+      renderResultIssues(allResultIssuesData);
+    } catch (error) {
+      console.error('Error loading results issues:', error);
+      showToast('Error loading results issues', 'error');
+    }
+  };
+  loadResults();
+  setInterval(loadResults, 30000);
   resultSearchInput.addEventListener('input', () => renderResultIssues(allResultIssuesData));
   resultFilterSelect.addEventListener('change', () => renderResultIssues(allResultIssuesData));
 }
@@ -1620,142 +1442,28 @@ function setResultIssueStatus(issueId, studentId, newStatus) {
     return;
   }
   
-  // Get current user info for admin logs
-  const currentUser = auth.currentUser;
-  const adminName = currentUser ? currentUser.email.split('@')[0] : 'Unknown Admin';
-  const timestamp = new Date().toISOString();
-  
-  // Add admin log entry
-  const logEntry = `${adminName} changed status to ${newStatus} at ${timestamp}`;
-  
-  // Get current result issue data first to preserve existing admin_logs
-  get(ref(db, `results_issues/${issueId}`)).then(snap => {
-    if (snap.exists()) {
-      const currentData = snap.val();
-      const existingLogs = currentData.admin_logs || [];
-      
-      const updates = {
-        status: newStatus,
-        admin_logs: [...existingLogs, logEntry],
-        updated_at: timestamp
-      };
-      
-      // If marking as inactive, add inactive timestamp
-      if (newStatus === 'inactive') {
-        updates.inactive_date = timestamp;
-      }
-      
-      // Update flat path - this will be read by student dashboard for progress tracking
-      update(ref(db, `results_issues/${issueId}`), updates).then(() => {
-        const statusMessage = newStatus === 'inactive' ? 'Result issue moved to inactive' : `Result issue status updated to ${newStatus}`;
-        showToast(statusMessage, 'success');
-        
-        // Log the activity
-        const issueTitle = currentData.course_code || currentData.description || 'Unknown Issue';
-        addLog(`📊 Result issue "${issueTitle}" status changed to ${newStatus} by ${adminName}`);
-        
-      }).catch(err => {
-        console.error('Error updating result issue:', err);
-        showToast('Error updating result issue status', 'error');
-      });
-      
-      // Update per-student path
-      if (studentId && studentId !== 'Unknown') {
-        // Update student's result issue tracking
-        updateStudentResultIssueStatus(studentId, issueId, newStatus, timestamp);
-      }
-    } else {
-      console.error('Result issue not found:', issueId);
-      showToast('Error: Result issue not found', 'error');
-    }
-  }).catch(err => {
-    console.error('Error fetching result issue:', err);
-    showToast('Error fetching result issue data', 'error');
+  fetch(`${API_BASE_URL}/api/results-issues/${issueId}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('adminAuthToken')}` },
+    body: JSON.stringify({ status: newStatus })
+  }).then(async response => {
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Unable to update results issue status.');
+    showToast(newStatus === 'inactive' ? 'Result issue moved to inactive' : `Result issue status updated to ${newStatus}`, 'success');
+    const resultsResponse = await fetch(`${API_BASE_URL}/api/results-issues`, { headers: { Authorization: `Bearer ${localStorage.getItem('adminAuthToken')}` } });
+    const resultsData = await resultsResponse.json();
+    allResultIssuesData = resultsData.resultsIssues || [];
+    renderResultIssues(allResultIssuesData);
+    await refreshComplaintViews();
+  }).catch(error => {
+    console.error('Error updating result issue:', error);
+    showToast('Error updating result issue status: ' + error.message, 'error');
   });
 }
 
 // Function to update student's result issue tracking
-function updateStudentResultIssueStatus(studentId, issueId, newStatus, timestamp) {
-  // Update in student's result issues path
-  get(ref(db, `results_issues/${studentId}`)).then(snap => {
-    if (snap.exists()) {
-      Object.entries(snap.val()).forEach(([pushId, obj]) => {
-        if (obj && obj.id === issueId) {
-          const updates = {
-            status: newStatus,
-            updated_at: timestamp
-          };
-          if (newStatus === 'inactive') {
-            updates.inactive_date = timestamp;
-          }
-          update(ref(db, `results_issues/${studentId}/${pushId}`), updates);
-        }
-      });
-    }
-  }).catch(err => {
-    console.error('Error updating student result issue:', err);
-  });
-  
-  // Also update in student's tracking/status path if it exists
-  const trackingPath = `student_tracking/${studentId}/result_issues/${issueId}`;
-  update(ref(db, trackingPath), {
-    status: newStatus,
-    updated_at: timestamp,
-    ...(newStatus === 'inactive' && { inactive_date: timestamp })
-  }).catch(err => {
-    console.log('Student tracking path may not exist, which is normal:', err.message);
-  });
-}
-
 function deleteResultIssue(issueId, studentId) {
-  // Mark as inactive instead of archiving and add deletion log
-  const currentUser = auth.currentUser;
-  const adminName = currentUser ? currentUser.email.split('@')[0] : 'Unknown Admin';
-  const timestamp = new Date().toISOString();
-  
-  // Get current result issue data first - FIXED: Use same path as student dashboard
-  get(ref(db, `results_issues/${issueId}`)).then(snap => {
-    if (snap.exists()) {
-      const currentData = snap.val();
-      
-      // Update with inactive status and deletion info
-      const updates = {
-        status: 'inactive',
-        inactive_date: timestamp,
-        updated_at: timestamp,
-        deleted_by: adminName,
-        deletion_reason: 'Moved to inactive by admin'
-      };
-      
-      update(ref(db, `results_issues/${issueId}`), updates).then(() => {
-        showToast('Result issue moved to inactive', 'success');
-        
-        // Log the activity
-        const issueTitle = currentData.course_code || currentData.description || 'Unknown Issue';
-        addLog(`🗑️ Result issue "${issueTitle}" moved to inactive by ${adminName}`);
-        
-      }).catch(err => {
-        console.error('Error updating result issue:', err);
-        showToast('Error moving result issue to inactive', 'error');
-      });
-      
-      // Update per-student path
-      if (studentId && studentId !== 'Unknown') {
-        updateStudentResultIssueStatus(studentId, issueId, 'inactive', timestamp);
-      }
-    }
-  }).catch(err => {
-    console.error('Error fetching result issue for deletion:', err);
-    showToast('Error processing result issue deletion', 'error');
-  });
-  
-  // Refresh inactive complaints view if it's currently open
-  setTimeout(() => {
-    const inactiveTab = document.querySelector('.nav-tab[data-tab="inactive_complaints"]');
-    if (inactiveTab && inactiveTab.classList.contains('active')) {
-      renderInactiveComplaints(allComplaintsData);
-    }
-  }, 500);
+  setResultIssueStatus(issueId, studentId, 'inactive');
 }
 
 function showResultIssueDetails(issue) {

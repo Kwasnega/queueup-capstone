@@ -53,7 +53,7 @@ function createComplaintsRouter(pool) {
     }
   });
 
-  router.delete('/:id', ...studentOnly, async (request, response) => {
+  router.delete('/:id', authenticateToken, async (request, response) => {
     const itemId = Number(request.params.id);
 
     if (!Number.isInteger(itemId) || itemId < 1) {
@@ -61,14 +61,17 @@ function createComplaintsRouter(pool) {
     }
 
     try {
+      const isAdmin = ADMIN_ROLES.includes(request.user.role);
       const result = await pool.query(
-        'DELETE FROM complaints WHERE id = $1 AND student_id = $2 RETURNING id',
-        [itemId, request.user.studentId]
+        isAdmin
+          ? 'DELETE FROM complaints WHERE id = $1 RETURNING id'
+          : 'DELETE FROM complaints WHERE id = $1 AND student_id = $2 RETURNING id',
+        isAdmin ? [itemId] : [itemId, request.user.studentId]
       );
 
       if (result.rowCount === 0) {
         const existing = await pool.query('SELECT student_id FROM complaints WHERE id = $1', [itemId]);
-        if (existing.rowCount > 0) {
+        if (existing.rowCount > 0 && !isAdmin) {
           return response.status(403).json({ message: 'You can only delete your own complaints' });
         }
         return response.status(404).json({ message: 'Complaint not found' });

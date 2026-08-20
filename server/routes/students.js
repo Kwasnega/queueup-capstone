@@ -1,8 +1,24 @@
 import { Router } from 'express';
-import { authenticateToken, requireRole } from '../middleware/auth.js';
+import { ADMIN_ROLES, authenticateToken, requireRole } from '../middleware/auth.js';
 
 function createStudentsRouter(pool) {
   const router = Router();
+
+  router.get('/', authenticateToken, requireRole(...ADMIN_ROLES), async (_request, response) => {
+    try {
+      const result = await pool.query(
+        `SELECT id, student_id, uid, full_name, email, faculty, department,
+                programme, session, level, semester, created_at
+         FROM students
+         ORDER BY created_at DESC`
+      );
+
+      return response.status(200).json({ students: result.rows });
+    } catch (error) {
+      console.error('Students lookup failed:', error.message);
+      return response.status(500).json({ message: 'Unable to retrieve students' });
+    }
+  });
 
   router.get('/me', authenticateToken, requireRole('student'), async (request, response) => {
     try {
