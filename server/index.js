@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import pg from 'pg';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createAuthRouter } from './routes/auth.js';
 
 dotenv.config({ path: fileURLToPath(new URL('.env', import.meta.url)) });
 
@@ -20,6 +21,7 @@ const pool = new Pool({
 
 app.use(cors());
 app.use(express.json());
+app.use('/api/auth', createAuthRouter(pool));
 
 app.get('/api/health', async (_request, response) => {
   try {
