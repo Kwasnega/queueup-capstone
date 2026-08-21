@@ -1046,6 +1046,9 @@
           <label>Any Comment? <span style="color: var(--text-muted);font-weight:normal;">(optional)</span></label>
           <textarea id="ri-comment" placeholder="Add any additional details..."></textarea>
 
+          <label>Evidence (optional)</label>
+          <input type="file" id="ri-attachment" accept="image/png,image/jpeg,application/pdf" style="margin-bottom: 15px;" />
+
           <button id="ri-submit" class="primary">Submit Results Issue</button>
         </div>
       `;
@@ -1082,25 +1085,69 @@
           return;
         }
 
+        const fileInput = document.getElementById('ri-attachment');
+        const file = fileInput.files[0];
+
+        if (file) {
+          const maxSize = 5 * 1024 * 1024; // 5MB
+          const allowedTypes = ['image/png', 'image/jpeg', 'application/pdf'];
+          
+          if (file.size > maxSize) {
+            showToast('Evidence file must be under 5MB.', 'error');
+            showSpinnerOnButton(btn, false, orig);
+            return;
+          }
+          if (!allowedTypes.includes(file.type)) {
+            showToast('Evidence file must be PNG, JPEG, or PDF.', 'error');
+            showSpinnerOnButton(btn, false, orig);
+            return;
+          }
+        }
+
         try {
-          const response = await fetch(`${API_BASE_URL}/api/results-issues`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${localStorage.getItem('authToken')}`
-            },
-            body: JSON.stringify({
-              faculty: payload.faculty,
-              department: payload.department,
-              programme: payload.programme,
-              session: payload.session,
-              course_code: payload.course_code,
-              course_title: payload.course_title,
-              lecturer_name: payload.lecturer_name,
-              description: payload.description,
-              comment: payload.comment
-            })
-          });
+          let fetchOptions;
+          if (file) {
+            const formData = new FormData();
+            formData.append('faculty', payload.faculty);
+            formData.append('department', payload.department);
+            formData.append('programme', payload.programme);
+            formData.append('session', payload.session);
+            formData.append('course_code', payload.course_code);
+            formData.append('course_title', payload.course_title);
+            formData.append('lecturer_name', payload.lecturer_name);
+            formData.append('description', payload.description);
+            formData.append('comment', payload.comment);
+            formData.append('attachment', file);
+            
+            fetchOptions = {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem('authToken')}`
+              },
+              body: formData
+            };
+          } else {
+            fetchOptions = {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${localStorage.getItem('authToken')}`
+              },
+              body: JSON.stringify({
+                faculty: payload.faculty,
+                department: payload.department,
+                programme: payload.programme,
+                session: payload.session,
+                course_code: payload.course_code,
+                course_title: payload.course_title,
+                lecturer_name: payload.lecturer_name,
+                description: payload.description,
+                comment: payload.comment
+              })
+            };
+          }
+
+          const response = await fetch(`${API_BASE_URL}/api/results-issues`, fetchOptions);
           const data = await response.json();
           if (!response.ok) throw new Error(data.message || 'Unable to submit results issue.');
 
@@ -1307,6 +1354,19 @@
       refreshResultsListIfOpen();
     });
 
+    window.viewEvidence = async function(issueId) {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/results-issues/${issueId}/attachment`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Unable to open attachment');
+        window.open(data.url, '_blank');
+      } catch (err) {
+        showToast('Failed to open attachment: ' + err.message, 'error');
+      }
+    };
+
     async function refreshResultsListIfOpen() {
       if (!profile) return;
       const listEl = document.getElementById('resultsList');
@@ -1335,6 +1395,7 @@
               <strong>${escapeHtml(c.course_code || 'Course')}</strong> - ${escapeHtml(c.description)}
               <div class="meta">${new Date(c.date_submitted).toLocaleString()}</div>
             </div>
+            ${c.attachment_url ? `<button onclick="viewEvidence('${c.id}')" style="margin-right:12px;background:var(--primary);color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;">View Evidence</button>` : ''}
             <div class="status-pill s-${c.status.replace(/\s/g,'')}" onclick="showProgressModal('result', '${c.id}', '${c.status}', '${escapeHtml(c.course_code || 'Result Issue')}')" data-result-id="${c.id}">${c.status}</div>
             <button class="delete-btn" data-id="${c.id}" style="margin-left:12px;background:#dc3545;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;">Delete</button>
           `;
