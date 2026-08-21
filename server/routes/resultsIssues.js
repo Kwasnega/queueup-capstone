@@ -1,12 +1,39 @@
 import { Router } from 'express';
 import { ADMIN_ROLES, authenticateToken, requireRole } from '../middleware/auth.js';
+import multer from 'multer';
+import { getS3Client, uploadToS3 } from '../services/s3.js';
+import { GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 function createResultsIssuesRouter(pool) {
   const router = Router();
   const studentOnly = [authenticateToken, requireRole('student')];
   const adminOnly = [authenticateToken, requireRole(...ADMIN_ROLES)];
 
-  router.post('/', ...studentOnly, async (request, response) => {
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type'));
+      }
+    }
+  });
+
+  // Helper wrapper for multer to catch and return custom 400 error
+  const handleUpload = (req, res, next) => {
+    upload.single('attachment')(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({ message: 'Invalid file type or size exceeded' });
+      }
+      next();
+    });
+  };
+
+  router.post('/', ...studentOnly, handleUpload, async (request, response) => {
     const {
       faculty,
       department,
@@ -16,8 +43,7 @@ function createResultsIssuesRouter(pool) {
       course_title: courseTitle,
       lecturer_name: lecturerName,
       description,
-      comment,
-      attachment_url: attachmentUrl
+      comment
     } = request.body;
 
     if (!courseCode || !description) {
@@ -25,6 +51,13 @@ function createResultsIssuesRouter(pool) {
     }
 
     try {
+      let attachmentUrl = request.body.attachment_url || null; // fallback if provided manually
+      
+      if (request.file) {
+        const key = `results-issues/${request.user.studentId}/${Date.now()}-${request.file.originalname}`;
+        attachmentUrl = await uploadToS3(request.file.buffer, key, request.file.mimetype);
+      }
+
       const result = await pool.query(
         `INSERT INTO results_issues
           (student_id, faculty, department, programme, session, course_code, course_title,
@@ -53,6 +86,45 @@ function createResultsIssuesRouter(pool) {
     } catch (error) {
       console.error('Results issue creation failed:', error.message);
       return response.status(500).json({ message: 'Unable to submit results issue' });
+    }
+  });
+
+  router.get('/:id/attachment', authenticateToken, async (request, response) => {
+    const itemId = Number(request.params.id);
+
+    if (!Number.isInteger(itemId) || itemId < 1) {
+      return response.status(400).json({ message: 'A valid id is required' });
+    }
+
+    try {
+      const result = await pool.query('SELECT attachment_url, student_id FROM results_issues WHERE id = $1', [itemId]);
+      
+      if (result.rowCount === 0) {
+        return response.status(404).json({ message: 'Results issue not found' });
+      }
+
+      const issue = result.rows[0];
+      const isAdmin = ADMIN_ROLES.includes(request.user.role);
+
+      if (!isAdmin && issue.student_id !== request.user.studentId) {
+        return response.status(403).json({ message: 'You do not have permission to access this attachment' });
+      }
+
+      if (!issue.attachment_url) {
+        return response.status(404).json({ message: 'No attachment found for this results issue' });
+      }
+
+      const command = new GetObjectCommand({
+        Bucket: process.env.S3_BUCKET_NAME,
+        Key: issue.attachment_url
+      });
+
+      const signedUrl = await getSignedUrl(getS3Client(), command, { expiresIn: 300 });
+
+      return response.status(200).json({ url: signedUrl });
+    } catch (error) {
+      console.error('Attachment retrieval failed:', error.message);
+      return response.status(500).json({ message: 'Unable to retrieve attachment' });
     }
   });
 
