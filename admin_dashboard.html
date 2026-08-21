@@ -574,21 +574,7 @@
     else {
       setDarkMode(false);
     }
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
-    // ---------- CONFIG ----------
-    const firebaseConfig = {
-      apiKey: "AIzaSyDIqR0b9hA9IaLhRsVtJKSSwh9NktuIIjI",
-      authDomain: "queueup-85662.firebaseapp.com",
-      databaseURL: "https://queueup-85662-default-rtdb.firebaseio.com",
-      projectId: "queueup-85662",
-      storageBucket: "queueup-85662.firebasestorage.app",
-      messagingSenderId: "647901471109",
-      appId: "1:647901471109:web:2607f4883cd1393259e4ec"
-    };
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
   const API_BASE_URL = "http://localhost:5000";
 
     // ---------- UI refs ----------
@@ -742,115 +728,118 @@
     }));
 
 // ---------- Dashboard & charts ----------
+let prevUsers = [];
+let prevComplaints = [];
+let prevResults = [];
+
+function updateDashboardUI() {
+  totalUsersEl.textContent = allUsersData.length;
+  
+  const roleFilteredComplaints = allComplaintsData.filter(c => canAdminViewComplaint(c, currentAdminRole));
+  const unresolvedComplaints = roleFilteredComplaints.filter(c => c.status === 'pending' || c.status === 'Queued').length;
+  const unresolvedResults = allResultIssuesData.filter(c => c.status === 'Queued' || c.status === 'in_progress').length;
+  queueNowEl.textContent = unresolvedComplaints + unresolvedResults;
+  
+  const resolvedComplaints = allComplaintsData.filter(c => c.status === 'resolved' || c.status === 'completed').length;
+  const resolvedResults = allResultIssuesData.filter(c => c.status === 'resolved' || c.status === 'completed').length;
+  completedQueuesEl.textContent = resolvedComplaints + resolvedResults;
+}
+
 function initDashboard() {
-  // Users - Show total users count
-  onValue(ref(db, 'users'), (snap) => {
-    const users = snap.val() || {};
-    const allUsers = Object.entries(users).map(([uid, v]) => ({ uid, ...v }));
-    
-    // Show total users count
-    totalUsersEl.textContent = allUsers.length;
-    console.log('[ADMIN DEBUG] Loaded users data - Total:', allUsers.length);
-  });
+  updateDashboardUI();
+  
+  setInterval(() => {
+    updateDashboardUI();
+    checkActivityDiffs();
+  }, 30000);
 
-    // Queue (show number of unresolved complaints and result issues as 'queue now')
-    // Filter complaints by admin role for queue count
-    const roleFilteredComplaints = allComplaintsData.filter(c => canAdminViewComplaint(c, currentAdminRole));
-    const unresolvedComplaints = roleFilteredComplaints.filter(c => c.status === 'pending' || c.status === 'Queued').length;
-    const unresolvedResults = allResultIssuesData.filter(c => c.status === 'Queued' || c.status === 'in_progress').length;
-    queueNowEl.textContent = unresolvedComplaints + unresolvedResults;
-
-  // Complaint metrics are refreshed by initComplaints backend polling.
-
-  // Completed Queue
-  onValue(ref(db, 'completed_queue'), (snap) => {
-    const completed = snap.val() || {};
-    allCompletedQueueData = Object.entries(completed).map(([id, v]) => ({ id, ...v }));
-  completedQueuesEl.textContent = Object.keys(completed).length;
-  });
-
-  // Result issue metrics are refreshed by initResultIssues backend polling.
-
-  // No more queue or complaint charts
   setupRealtimeActivityLog();
 }
 
+function initCharts() {
+  console.log('[ADMIN DEBUG] Charts initialized (placeholder)');
+}
 
-    // Initialize charts function
-    function initCharts() {
-      // Charts functionality can be added here in the future
-      // For now, this prevents the ReferenceError
-      console.log('[ADMIN DEBUG] Charts initialized (placeholder)');
+function addLog(message) {
+  const list = document.getElementById('activity-log-list');
+  if (!list) return;
+  
+  const noActivityMsg = list.querySelector('li');
+  if (noActivityMsg && noActivityMsg.textContent.includes('No recent activity')) {
+    noActivityMsg.remove();
+  }
+  
+  const li = document.createElement('li');
+  li.className = 'small-muted';
+  li.style.cssText = 'padding: 8px 0; border-bottom: 1px solid var(--border); margin-bottom: 4px;';
+  const t = new Date().toLocaleString();
+  li.innerHTML = `<strong>${message}</strong> <div style="font-size:12px;color:var(--muted);margin-top:4px;">${t}</div>`;
+  
+  list.insertBefore(li, list.firstChild);
+  
+  while (list.children.length > 20) {
+    list.removeChild(list.lastChild);
+  }
+}
+
+function checkActivityDiffs() {
+  const newUsers = allUsersData.filter(u => !prevUsers.some(p => p.uid === u.uid));
+  newUsers.forEach(u => addLog(`👤 New user registered: ${u.name || u.email}`));
+  prevUsers = [...allUsersData];
+
+  const newComplaints = allComplaintsData.filter(c => !prevComplaints.some(p => p.id === c.id));
+  newComplaints.forEach(c => {
+    if (canAdminViewComplaint(c, currentAdminRole)) {
+      addLog(`📝 New complaint submitted: ${c.subject || 'Unknown'}`);
     }
+  });
+  prevComplaints = [...allComplaintsData];
 
+  const newResults = allResultIssuesData.filter(c => !prevResults.some(p => p.id === c.id));
+  newResults.forEach(c => addLog(`📄 New result issue reported: ${c.course_code || 'Unknown'}`));
+  prevResults = [...allResultIssuesData];
+}
 
-    // activity log & notification-like entries
-    function addLog(message) {
-      const list = document.getElementById('activity-log-list');
-      if (!list) return;
-      
-      // Remove the "No recent activity" message if it exists
-      const noActivityMsg = list.querySelector('li');
-      if (noActivityMsg && noActivityMsg.textContent.includes('No recent activity')) {
-        noActivityMsg.remove();
-      }
-      
-      const li = document.createElement('li');
-      li.className = 'small-muted';
-      li.style.cssText = 'padding: 8px 0; border-bottom: 1px solid var(--border); margin-bottom: 4px;';
-      const t = new Date().toLocaleString();
-      li.innerHTML = `<strong>${message}</strong> <div style="font-size:12px;color:var(--muted);margin-top:4px;">${t}</div>`;
-      
-      // Insert at the beginning (most recent first)
-      list.insertBefore(li, list.firstChild);
-      
-      // keep max 20 entries
-      while (list.children.length > 20) {
-        list.removeChild(list.lastChild);
-      }
-    }
+function setupRealtimeActivityLog() {
+  prevUsers = [...allUsersData];
+  prevComplaints = [...allComplaintsData];
+  prevResults = [...allResultIssuesData];
 
-    function setupRealtimeActivityLog(){
-      let isInitialLoad = true;
-      
-      // Complaint and result activity is refreshed by backend polling flows.
+  setTimeout(() => {
+    const roleFilteredComplaints = allComplaintsData.filter(c => canAdminViewComplaint(c, currentAdminRole));
+    const roleInfo = currentAdminRole === 'SuperAdmin' ? 'all complaints (SuperAdmin)' : `complaints for ${currentAdminRole}`;
+    addLog(`🚀 Admin dashboard initialized - monitoring ${allUsersData.length} users, ${roleFilteredComplaints.length} ${roleInfo}, ${allResultIssuesData.length} result issues`);
+  }, 2000);
+}
 
-      // Add some initial activity logs to show the system is working
-      setTimeout(() => {
-        if (isInitialLoad) {
-          const roleFilteredComplaints = allComplaintsData.filter(c => canAdminViewComplaint(c, currentAdminRole));
-          const roleInfo = currentAdminRole === 'SuperAdmin' ? 'all complaints (SuperAdmin)' : `complaints for ${currentAdminRole}`;
-          addLog(`🚀 Admin dashboard initialized - monitoring ${allUsersData.length} users, ${roleFilteredComplaints.length} ${roleInfo}, ${allResultIssuesData.length} result issues`);
-          isInitialLoad = false;
-        }
-      }, 2000);
-    }
-
-    // All queue logic removed
-
-    // ---------- User management ----------
     function initUserManagement(){
-      fetch(`${API_BASE_URL}/api/students`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('adminAuthToken')}` }
-      }).then(async response => {
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message || 'Unable to load students.');
+      const loadUsers = async () => {
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/students`, {
+            headers: { Authorization: `Bearer ${localStorage.getItem('adminAuthToken')}` }
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.message || 'Unable to load students.');
 
-        allUsersData = (data.students || []).map(student => ({
-          ...student,
-          name: student.full_name,
-          studentId: student.student_id,
-          role: 'Student',
-          timestamp: student.created_at
-        }));
-        console.log('[ADMIN DEBUG] User management - Total students:', allUsersData.length);
-        renderUsers(allUsersData);
-      }).catch(error => {
-        console.error('Error loading students:', error);
-        showToast('Error loading students', 'error');
-      });
-      userSearchInput.addEventListener('input', ()=> renderUsers(allUsersData));
+          allUsersData = (data.students || []).map(student => ({
+            ...student,
+            name: student.full_name,
+            studentId: student.student_id,
+            role: 'Student',
+            timestamp: student.created_at
+          }));
+          console.log('[ADMIN DEBUG] User management - Total students:', allUsersData.length);
+          renderUsers(allUsersData);
+        } catch (error) {
+          console.error('Error loading students:', error);
+          showToast('Error loading students', 'error');
+        }
+      };
       
+      loadUsers();
+      setInterval(loadUsers, 30000);
+      
+      userSearchInput.addEventListener('input', ()=> renderUsers(allUsersData));
     }
 
     function renderUsers(users){
@@ -1642,13 +1631,23 @@ function showToast(message, type) {
 // ---------- Admin Management ----------
 let allAdminsData = [];
 
-function initAdminManagement() {
-  onValue(ref(db, 'admins'), (snap) => {
-    const admins = snap.val() || {};
-    allAdminsData = Object.entries(admins).map(([uid, data]) => ({ uid, ...data }));
-    console.log('[ADMIN DEBUG] Loaded admins:', allAdminsData);
+async function fetchAdmins() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/admins`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('adminAuthToken')}` }
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Unable to load admins.');
+    allAdminsData = data.admins || [];
     renderAdmins();
-  });
+  } catch (error) {
+    console.error('Error loading admins:', error);
+    showToast('Error loading admins', 'error');
+  }
+}
+
+function initAdminManagement() {
+  fetchAdmins();
   
   // Create admin button handler
   document.getElementById('create-admin-btn').addEventListener('click', showCreateAdminModal);
@@ -1666,9 +1665,9 @@ function renderAdmins() {
   }
   
   allAdminsData.forEach(admin => {
-    const createdDate = admin.createdAt ? new Date(admin.createdAt).toLocaleDateString() : 'N/A';
-    const status = admin.isAdmin ? 'Active' : 'Inactive';
-    const statusClass = admin.isAdmin ? 's-resolved' : 's-pending';
+    const createdDate = admin.created_at ? new Date(admin.created_at).toLocaleDateString() : 'N/A';
+    const status = admin.is_active ? 'Active' : 'Inactive';
+    const statusClass = admin.is_active ? 's-resolved' : 's-pending';
     
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -1729,64 +1728,27 @@ async function createAdmin() {
     return;
   }
   
-  // Store current user info before creating new admin
-  const currentUser = auth.currentUser;
-  const currentUserEmail = currentUser.email;
-  const currentAdminName = currentUser ? currentUser.email.split('@')[0] : 'Unknown Admin';
-  
   try {
-    // Create Firebase Auth user account
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const newUser = userCredential.user;
+    const response = await fetch(`${API_BASE_URL}/api/admins`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('adminAuthToken')}`
+      },
+      body: JSON.stringify({ email, role, password })
+    });
     
-    // Create admin record in database using the actual Firebase Auth UID
-    const adminData = {
-      email: email,
-      role: role,
-      isAdmin: true,
-      createdAt: new Date().toISOString(),
-      createdBy: currentUser.uid
-    };
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Unable to create admin');
     
-    await update(ref(db, `admins/${newUser.uid}`), adminData);
-    
-    // Log the activity before signing out
-    addLog(`👨‍💼 New admin created: ${email} (${role}) by ${currentAdminName}`);
-    
-    // Sign out the newly created user and sign back in the original admin
-    await signOut(auth);
-    
-    showToast('Admin created successfully. Please log back in to continue.', 'success');
+    showToast('Admin created successfully.', 'success');
     closeModal();
     
-    // Redirect to login page after a short delay
-    setTimeout(() => {
-      window.location.href = 'admin.html';
-    }, 2000);
-    
+    // Refresh admin list
+    fetchAdmins();
   } catch (error) {
     console.error('Error creating admin:', error);
-    let errorMessage = 'Error creating admin: ';
-    
-    // Handle specific Firebase Auth errors
-    switch (error.code) {
-      case 'auth/email-already-in-use':
-        errorMessage += 'Email is already registered';
-        break;
-      case 'auth/invalid-email':
-        errorMessage += 'Invalid email address';
-        break;
-      case 'auth/weak-password':
-        errorMessage += 'Password is too weak';
-        break;
-      case 'auth/operation-not-allowed':
-        errorMessage += 'Email/password accounts are not enabled';
-        break;
-      default:
-        errorMessage += error.message;
-    }
-    
-    showToast(errorMessage, 'error');
+    showToast('Error creating admin: ' + error.message, 'error');
   }
 }
 
@@ -1813,8 +1775,8 @@ function editAdmin(adminUid) {
         </div>
         <div><span class="label">Status</span>
           <select id="edit-admin-status" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;">
-            <option value="true" ${admin.isAdmin ? 'selected' : ''}>Active</option>
-            <option value="false" ${!admin.isAdmin ? 'selected' : ''}>Inactive</option>
+            <option value="true" ${admin.is_active ? 'selected' : ''}>Active</option>
+            <option value="false" ${!admin.is_active ? 'selected' : ''}>Inactive</option>
           </select>
         </div>
       </div>
@@ -1829,28 +1791,26 @@ function editAdmin(adminUid) {
 
 async function updateAdmin(adminUid) {
   const role = document.getElementById('edit-admin-role').value;
-  const isAdmin = document.getElementById('edit-admin-status').value === 'true';
-  
-  // Get admin info for logging
-  const admin = allAdminsData.find(a => a.uid === adminUid);
-  const currentAdminName = auth.currentUser ? auth.currentUser.email.split('@')[0] : 'Unknown Admin';
+  const is_active = document.getElementById('edit-admin-status').value === 'true';
   
   try {
-    await update(ref(db, `admins/${adminUid}`), {
-      role: role,
-      isAdmin: isAdmin,
-      updatedAt: new Date().toISOString(),
-      updatedBy: auth.currentUser.uid
+    const response = await fetch(`${API_BASE_URL}/api/admins/${adminUid}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('adminAuthToken')}`
+      },
+      body: JSON.stringify({ role, is_active })
     });
+    
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Unable to update admin');
     
     showToast('Admin updated successfully', 'success');
     closeModal();
     
-    // Log the activity
-    const adminEmail = admin ? admin.email : 'Unknown Admin';
-    const statusText = isAdmin ? 'activated' : 'deactivated';
-    addLog(`⚙️ Admin ${adminEmail} updated: role changed to ${role}, ${statusText} by ${currentAdminName}`);
-    
+    // Refresh admin list
+    fetchAdmins();
   } catch (error) {
     console.error('Error updating admin:', error);
     showToast('Error updating admin: ' + error.message, 'error');
@@ -1862,18 +1822,21 @@ async function deleteAdmin(adminUid) {
     return;
   }
   
-  // Get admin info for logging
-  const admin = allAdminsData.find(a => a.uid === adminUid);
-  const currentAdminName = auth.currentUser ? auth.currentUser.email.split('@')[0] : 'Unknown Admin';
-  
   try {
-    await update(ref(db), { [`admins/${adminUid}`]: null });
+    const response = await fetch(`${API_BASE_URL}/api/admins/${adminUid}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('adminAuthToken')}`
+      }
+    });
+    
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Unable to delete admin');
+    
     showToast('Admin deleted successfully', 'success');
     
-    // Log the activity
-    const adminEmail = admin ? admin.email : 'Unknown Admin';
-    addLog(`🗑️ Admin ${adminEmail} deleted by ${currentAdminName}`);
-    
+    // Refresh admin list
+    fetchAdmins();
   } catch (error) {
     console.error('Error deleting admin:', error);
     showToast('Error deleting admin: ' + error.message, 'error');

@@ -117,13 +117,17 @@ function createAuthRouter(pool) {
 
     try {
       const result = await pool.query(
-        'SELECT id, uid, full_name, email, role, department, password_hash FROM admins WHERE email = $1',
+        'SELECT id, uid, full_name, email, role, department, password_hash, is_active FROM admins WHERE email = $1',
         [email]
       );
       const admin = result.rows[0];
 
       if (!admin || !(await bcrypt.compare(password, admin.password_hash))) {
         return response.status(401).json({ message: 'Invalid admin email or password' });
+      }
+
+      if (!admin.is_active) {
+        return response.status(403).json({ message: 'Admin account is inactive. Please contact a SuperAdmin.' });
       }
 
       if (!process.env.JWT_SECRET) {

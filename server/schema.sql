@@ -24,8 +24,11 @@ CREATE TABLE admins (
   password_hash VARCHAR(255) NOT NULL,
   role VARCHAR(30) NOT NULL, -- SuperAdmin, HOD, ExamOfficer
   department VARCHAR(50),
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+ALTER TABLE admins ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
 
 CREATE TABLE results_issues (
   id SERIAL PRIMARY KEY,
