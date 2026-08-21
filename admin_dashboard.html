@@ -878,15 +878,77 @@ function setupRealtimeActivityLog() {
         const sid = u.studentId || u.studentID || 'N/A';
         const tr = document.createElement('tr');
         
-        tr.innerHTML = `<td>${escapeHtml(name)}</td><td>${escapeHtml(sid)}</td><td>${escapeHtml(u.role||'Student')}</td><td>${joinDate}</td><td><button class="action-btn view-btn" data-user-id="${u.uid}">View</button></td>`;
+        tr.innerHTML = `<td>${escapeHtml(name)}</td><td>${escapeHtml(sid)}</td><td>${escapeHtml(u.role||'Student')}</td><td>${joinDate}</td><td>
+          <button class="action-btn view-btn" data-user-id="${u.uid}">View</button>
+          <button class="action-btn escalate-btn" data-reset-id="${u.uid}">Reset Password</button>
+        </td>`;
         
         const viewBtn = tr.querySelector('.view-btn');
         if (viewBtn) {
           viewBtn.addEventListener('click', () => showStudentProfileModal(u));
         }
+        
+        const resetBtn = tr.querySelector('.escalate-btn');
+        if (resetBtn) {
+          resetBtn.addEventListener('click', () => openResetPasswordModal(u.uid));
+        }
+        
         userTableBody.appendChild(tr);
       });
     }
+
+    function openResetPasswordModal(studentUid) {
+      const modalContent = `
+        <div class="modal-header">
+          <h3>Reset Student Password</h3>
+          <button onclick="closeModal()" class="action-btn view-btn" style="border:none;">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="detail-grid">
+            <div>
+              <span class="label">New Password</span>
+              <input type="password" id="new-student-password" placeholder="Minimum 6 characters" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;">
+            </div>
+          </div>
+          <div style="margin-top:20px;">
+            <button class="action-btn escalate-btn" onclick="submitPasswordReset('${studentUid}')">Reset</button>
+            <button class="action-btn view-btn" onclick="closeModal()" style="margin-left:10px;">Cancel</button>
+          </div>
+        </div>
+      `;
+      openModal(modalContent);
+    }
+
+    async function submitPasswordReset(studentUid) {
+      const newPassword = document.getElementById('new-student-password').value.trim();
+      
+      if (!newPassword || newPassword.length < 6) {
+        showToast('Password must be at least 6 characters long', 'error');
+        return;
+      }
+      
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/students/${studentUid}/reset-password`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('adminAuthToken')}`
+          },
+          body: JSON.stringify({ newPassword })
+        });
+        
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Unable to reset password');
+        
+        showToast('Password reset successfully.', 'success');
+        closeModal();
+      } catch (error) {
+        console.error('Error resetting password:', error);
+        showToast('Error resetting password: ' + error.message, 'error');
+      }
+    }
+    window.openResetPasswordModal = openResetPasswordModal;
+    window.submitPasswordReset = submitPasswordReset;
 
    // ---------- Complaints management ----------
 async function fetchAdminComplaints() {

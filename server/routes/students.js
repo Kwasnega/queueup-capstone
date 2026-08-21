@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { ADMIN_ROLES, authenticateToken, requireRole } from '../middleware/auth.js';
+import bcrypt from 'bcrypt';
 
 function createStudentsRouter(pool) {
   const router = Router();
@@ -71,6 +72,32 @@ function createStudentsRouter(pool) {
     } catch (error) {
       console.error('Student profile update failed:', error.message);
       return response.status(500).json({ message: 'Unable to update student profile' });
+    }
+  });
+
+  router.patch('/:id/reset-password', authenticateToken, requireRole(...ADMIN_ROLES), async (request, response) => {
+    const { id } = request.params; // this is the student uid based on how frontend uses it
+    const { newPassword } = request.body;
+
+    if (!newPassword || newPassword.length < 6) {
+      return response.status(400).json({ message: 'Password must be at least 6 characters long' });
+    }
+
+    try {
+      const passwordHash = await bcrypt.hash(newPassword, 10);
+      const result = await pool.query(
+        `UPDATE students SET password_hash = $1 WHERE uid = $2 RETURNING id`,
+        [passwordHash, id]
+      );
+
+      if (result.rowCount === 0) {
+        return response.status(404).json({ message: 'Student not found' });
+      }
+
+      return response.status(200).json({ message: 'Password reset successfully' });
+    } catch (error) {
+      console.error('Password reset failed:', error.message);
+      return response.status(500).json({ message: 'Unable to reset password' });
     }
   });
 
